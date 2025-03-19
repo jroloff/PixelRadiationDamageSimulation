@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import datetime as dt
 
+
 from array import array as pyroot_array
 import ROOT
 
@@ -66,11 +67,12 @@ def __get_arguments():
     )
 
     return parser.parse_args()
+    
 
 
 def __check_arguments(args):
-    if ((args.xmin is not None and args.xmax is None)
-        or (args.xmin is None and args.xmax is not None)
+    if ((args.x_min is not None and args.x_max is None)
+        or (args.x_min is None and args.x_max is not None)
     ):
         print("Error: xmin and xmax must be both None or noth not None!")
         sys.exit(1)

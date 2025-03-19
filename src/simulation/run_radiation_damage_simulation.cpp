@@ -221,7 +221,8 @@ void AnnealingConstants::initialize(double gA_, double gY_, double gC_, double k
 void AnnealingConstants::initialize(string filename)
 {
     ifstream input_file(filename.c_str());
-    if (input_file.is_open())
+    cout << filename.c_str() <<endl;
+	    if (input_file.is_open())
     {
         cout << "Reading annealing constant file: " << filename << endl;
 
@@ -740,6 +741,7 @@ vector<DataElement> getProfile(string filename)
     DataElement profileSnapshot;
 
     ifstream input_file(filename.c_str());
+    cout << filename << endl;
     if (input_file.is_open())
     {
         cout << "Reading temperature/radiation file: " << filename << endl;
