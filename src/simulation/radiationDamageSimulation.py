@@ -130,6 +130,7 @@ class Sensor:
   smallNumber = 1e-30;
   boltzmanConstant = 8.6173303e-5
   electronCharge = 1.6021766208e-13
+
   #Permittivity of vacuum
   epsilon0 = 8.854187817E-12
   #Permittivity of silicon
@@ -412,7 +413,6 @@ class Sensor:
 
     G_i_tmp = 0;  
     # TODO: not sure if there is a better name for G_i...
-    # TODO: Volume V_i is depleted volume in cm^3 -- check if I am using the same units
     for i in range(len(self.beta_contribution_vector)): 
         if i>0 :
             # Sum over everything minus sum up to i to give sum from i to n
@@ -446,9 +446,11 @@ class Sensor:
     # Not sure exactly what this is, but it should convert from a fluence to a luminosity?
     global_layer_conversion = 6.262e12
     #self.leakage_current.append(G_i_tmp* global_layer_conversion / self.fluence_vector[-1]);
+    # TODO: Figure out this random factor of 1000 -- maybe converting to mA???
     self.leakage_current.append(G_i_tmp* 1000.0 * self.depth);
     self.powerconsumption.append(self.leakage_current[-1] * self.NtoV_function());
 
+    # TODO: may need to fix these functions, not sure
     # Convert to per volume or per module units
     self.leakage_current_per_volume.append(self.getPerVolume(self.leakage_current[-1]))
     self.leakage_current_per_module.append(self.getPerModule(self.leakage_current[-1]))
