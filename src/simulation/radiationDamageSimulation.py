@@ -529,11 +529,11 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
     gr = ROOT.TGraph(len(vecx),t_timevector, t_vdepvector);
 
     #in case of plot as a function of time, convert the days from simulation into a more handy date
-    #if(mode=="date") :
-    #    gr.GetXaxis().SetTimeDisplay(1);
-    #    gr.GetXaxis().SetNdivisions(6, 2, 0);
-    #    gr.GetXaxis().SetTimeFormat("%d/%m/%Y");
-    #    gr.GetXaxis().SetTimeOffset(0, "gmt");
+    if(mode=="date") :
+        gr.GetXaxis().SetTimeDisplay(1);
+        gr.GetXaxis().SetNdivisions(6, 2, 0);
+        gr.GetXaxis().SetTimeFormat("%d/%m/%Y");
+        gr.GetXaxis().SetTimeOffset(0, "gmt");
 
     gr.GetXaxis().SetTitle(xName);
     gr.GetYaxis().SetTitle(yName);
