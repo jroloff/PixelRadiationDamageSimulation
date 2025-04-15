@@ -141,7 +141,7 @@ class Sensor:
   #at this reference temperature!!!
   Tref = 293.15;
   # According to page 5 of https://iopscience.iop.org/article/10.1088/1748-0221/14/06/P06012/pdf, t0 is one minute = 60 seconds
-  t0 = 60 
+  t0 = 60.
 
   # Dimensions of sensors for CMS
   # Taken from page 68 of https://cds.cern.ch/record/2773267
@@ -169,6 +169,8 @@ class Sensor:
         self.tmpTimeVector = [];
         self.fluence_vector = [];
         self.flux_vector = [];
+        self.doseRate_vector = [];
+        self.duration_vector = [];
 
         # Initialize without any defects
         self.Nacceptor = 0.0;
@@ -296,6 +298,8 @@ class Sensor:
     self.totalDose += float(profile.doseRate) * float(profile.duration);
     # Append information given by profile
     self.fluence_vector.append(self.totalDose);
+    self.doseRate_vector.append(profile.doseRate);
+    self.duration_vector.append(profile.duration);
 
     self.temperature_vector.append(profile.temperature);
     self.fill_vector.append(profile.fill);
@@ -308,7 +312,6 @@ class Sensor:
         self.leakageCurrentData.append(profile.leakageCurrentData);
         self.dleakageCurrentData.append(profile.dleakageCurrentData);
         self.flux_vector.append(profile.doseRate);
-
 
     
     ##################################################################
@@ -384,41 +387,40 @@ class Sensor:
     # Append all the acceptor and donor information for this current time step to the vectors
     self.V_dep_vector.append(self.NtoV_function());
 
-  
     # Equations taken from page 5 of https://cds.cern.ch/record/2773267
-    tauInverse = self.leakageCurrentConstants.k01 * math.exp(-self.leakageCurrentConstants.E1 / (self.boltzmanConstant * profile.temperature))
+    tauInverse = self.leakageCurrentConstants.k01 * math.exp(-self.leakageCurrentConstants.E1 / (self.boltzmanConstant * int(profile.temperature)))
     # The individual term in the sum over j of t_j / tau(T_j)
     self.alpha1_contribution_vector.append(profile.duration *tauInverse)
+
+    # Equations taken from page 5 of https://cds.cern.ch/record/2773267
+    self.Theta_vector.append(math.exp(-self.leakageCurrentConstants.E1_star/self.boltzmanConstant * (1.0 / float(int(profile.temperature)) - 1.0/self.Tref) ))
+
+    # Equation 3.2 of https://iopscience.iop.org/article/10.1088/1748-0221/14/06/P06012/pdf, t0 is one minute = 60 seconds
+    # The individual term in the sum over Theta(T_j)*t_j / t0
+    self.beta_contribution_vector.append(self.Theta_vector[-1] * profile.duration / self.t0)
+
     # The sum of terms from j=0 to n of t_j / tau(T_j)
     if len(self.alpha1_contribution_sum_vector):
       self.alpha1_contribution_sum_vector.append(self.alpha1_contribution_sum_vector[-1] + self.alpha1_contribution_vector[-1] )
     else:
       self.alpha1_contribution_sum_vector.append(self.alpha1_contribution_vector[-1] )
-
-    # Equations taken from page 5 of https://cds.cern.ch/record/2773267
-    self.Theta_vector.append(math.exp(-self.leakageCurrentConstants.E1_star/self.boltzmanConstant * (1.0 / profile.temperature - 1.0/self.Tref) ))
-
-    # Equation 3.2 of https://iopscience.iop.org/article/10.1088/1748-0221/14/06/P06012/pdf, t0 is one minute = 60 seconds
-    # The individual term in the sum over Theta(T_j)*t_j / t0
-    self.beta_contribution_vector.append(self.Theta_vector[-1] * profile.duration / self.t0)
     # The sum of terms from j=0 to n of Theta(T_j)*t_j / t0
     if len(self.beta_contribution_sum_vector):
       self.beta_contribution_sum_vector.append(self.beta_contribution_sum_vector[-1] + self.beta_contribution_vector[-1])
     else:
       self.beta_contribution_sum_vector.append(self.beta_contribution_vector[-1])
-    
-
 
     G_i_tmp = 0;  
     # TODO: not sure if there is a better name for G_i...
     # TODO: Volume V_i is depleted volume in cm^3 -- check if I am using the same units
-    for i in range(len(self.beta_contribution_sum_vector)): 
-        if i :
+    for i in range(len(self.beta_contribution_vector)): 
+        if i>0 :
             # Sum over everything minus sum up to i to give sum from i to n
-            G_i_tmp += self.volume * profile.duration * (self.fluence_vector[-1] - self.fluence_vector[-2])*( self.leakageCurrentConstants.alpha_1 * math.exp(-(self.alpha1_contribution_sum_vector[-1] - self.alpha1_contribution_sum_vector[i-1])) + self.leakageCurrentConstants.alpha_0_star  - self.leakageCurrentConstants.beta * math.log(self.beta_contribution_sum_vector[-1] - self.beta_contribution_sum_vector[i-1]));
+            G_i_tmp += int(self.doseRate_vector[i]) * self.duration_vector[i]*( self.leakageCurrentConstants.alpha_1 * math.exp(-(self.alpha1_contribution_sum_vector[-1] - self.alpha1_contribution_sum_vector[i-1])) + self.leakageCurrentConstants.alpha_0_star  - self.leakageCurrentConstants.beta * math.log(self.beta_contribution_sum_vector[-1] - self.beta_contribution_sum_vector[i-1]));
         else:
             # If we are on the first time increment, then the sum from j=i to i-1 is just the sum from 0 to i-1, so we don't need to do anything special
-            G_i_tmp += self.volume * profile.duration * self.fluence_vector[-1] * ( self.leakageCurrentConstants.alpha_1 * math.exp(-(self.alpha1_contribution_sum_vector[-1])) + self.leakageCurrentConstants.alpha_0_star  - self.leakageCurrentConstants.beta * math.log(self.beta_contribution_sum_vector[-1]))
+            G_i_tmp += int(self.doseRate_vector[i]) * self.duration_vector[i]*( self.leakageCurrentConstants.alpha_1 * math.exp(-(self.alpha1_contribution_sum_vector[-1])) + self.leakageCurrentConstants.alpha_0_star  - self.leakageCurrentConstants.beta * math.log(self.beta_contribution_sum_vector[-1]))
+          
 
     self.G_i.append(G_i_tmp);
     
@@ -443,7 +445,8 @@ class Sensor:
     # Also, I'm not sure where all these other numbers are comping from, since they don't correspond exactly to the volume that we would calculate
     # Not sure exactly what this is, but it should convert from a fluence to a luminosity?
     global_layer_conversion = 6.262e12
-    self.leakage_current.append(G_i_tmp* global_layer_conversion / self.fluence_vector[-1]);
+    #self.leakage_current.append(G_i_tmp* global_layer_conversion / self.fluence_vector[-1]);
+    self.leakage_current.append(G_i_tmp* 1000.0 * self.depth);
     self.powerconsumption.append(self.leakage_current[-1] * self.NtoV_function());
 
     # Convert to per volume or per module units
