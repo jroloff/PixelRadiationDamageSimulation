@@ -504,9 +504,8 @@ def convertDatetime(dateVector, beginTime):
   reformattedVec = []
 
   for k in range(len(dateVector)):
-    day=int(dateVector[k]);
     # Convert to seconds based on the date
-    d2 = beginTime + datetime.timedelta(seconds=(dateVector[k] - day)*86400)
+    d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*86400)
     da = ROOT.TDatime(d2.date().year, d2.date().month, d2.date().day, d2.time().hour, d2.time().minute, d2.time().second);
     reformattedVec.append(da.Convert());
 
@@ -530,11 +529,11 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
     gr = ROOT.TGraph(len(vecx),t_timevector, t_vdepvector);
 
     #in case of plot as a function of time, convert the days from simulation into a more handy date
-    if(mode=="date") :
-        gr.GetXaxis().SetTimeDisplay(1);
-        gr.GetXaxis().SetNdivisions(6, 2, 0);
-        gr.GetXaxis().SetTimeFormat("%d/%m/%Y");
-        gr.GetXaxis().SetTimeOffset(0, "gmt");
+    #if(mode=="date") :
+    #    gr.GetXaxis().SetTimeDisplay(1);
+    #    gr.GetXaxis().SetNdivisions(6, 2, 0);
+    #    gr.GetXaxis().SetTimeFormat("%d/%m/%Y");
+    #    gr.GetXaxis().SetTimeOffset(0, "gmt");
 
     gr.GetXaxis().SetTitle(xName);
     gr.GetYaxis().SetTitle(yName);
