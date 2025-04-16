@@ -140,20 +140,23 @@ class Sensor:
   #T-ref is hardcoded and fixed, it cannot be changed in a trivial way
   #since the other parameters, especially alpha 0 star were evaluated
   #at this reference temperature!!!
+  # TODO: This is just for some constants, but does not impact some of the scaling we might want to do, I think??
   Tref = 293.15;
   # According to page 5 of https://iopscience.iop.org/article/10.1088/1748-0221/14/06/P06012/pdf, t0 is one minute = 60 seconds
   t0 = 60.
 
   # Dimensions of sensors for CMS
   # Taken from page 68 of https://cds.cern.ch/record/2773267
+  # TODO: take this from the arguments
   depth = 0.0285
   width = 6.48
   length = 1.62
 
-  # TODO: Understand this scaling, why is it "temporary"?
-  #temporary scaling for bpix
-  #  this parameter is multiplied to all fluence rates from the input profile
+  # This parameter is multiplied to all fluence rates from the input profile
   # TODO: Not sure where these numbers come from
+  # Could this be the scaling factor that is discussed in 5.3.1.3?
+  # https://cds.cern.ch/record/2773267/files/10.23731_CYRM-2021-001.59.pdf
+  # This number is very close to 1, and it mentioned that this was for bpix
   DoseRateScaling = 0.0859955711871/8.9275E-02;
 
   def __init__(self, leakageCurrentConstants, annealingConstants):
@@ -268,7 +271,7 @@ class Sensor:
     # Not sure where the 1e-4 term comes from...
     leakageCurrent/=self.depth;
 
-    #scale to user defined temperature
+    #scale to user defined temperature -- are we sure we shouldn't use the input temperature???
     volumeNorm = userTref*userTref/(roomTemperature*roomTemperature)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/userTref - 1/roomTemperature))
     return volumeNorm*leakageCurrent
 
@@ -447,7 +450,9 @@ class Sensor:
     global_layer_conversion = 6.262e12
     #self.leakage_current.append(G_i_tmp* global_layer_conversion / self.fluence_vector[-1]);
     # TODO: Figure out this random factor of 1000 -- maybe converting to mA???
-    self.leakage_current.append(G_i_tmp* 1000.0 * self.depth);
+    # Convert current in Amps to mA
+    amps_to_mA = 1000.
+    self.leakage_current.append(G_i_tmp * amps_to_mA * self.depth);
     self.powerconsumption.append(self.leakage_current[-1] * self.NtoV_function());
 
     # TODO: may need to fix these functions, not sure
@@ -510,7 +515,8 @@ def convertDatetime(dateVector, beginTime):
 
   for k in range(len(dateVector)):
     # Convert to seconds based on the date
-    d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*86400)
+    daysInSeconds = 86400
+    d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*daysInSeconds)
     da = ROOT.TDatime(d2.date().year, d2.date().month, d2.date().day, d2.time().hour, d2.time().minute, d2.time().second);
     reformattedVec.append(da.Convert());
 
