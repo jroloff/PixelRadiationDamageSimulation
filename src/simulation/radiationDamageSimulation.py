@@ -6,24 +6,31 @@ from array import array
 
 
 parser = OptionParser()
+#These are the main options that should be changed
+parser.add_option("--input_profile", default="../../oldPixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1_newL1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--inputAnnealingConstants", default="config/annealing_constants.py", help="Input annealing constants file name")
+parser.add_option("--output_root_file", default="testFile.root", help="Output ROOT file name")
+# These are options that shoudlb e changed if you are using different sensors etc.
 parser.add_option("--timestep", default=1, help="step size is 1 second, do not change this!")
 parser.add_option("--donorremovalfraction", default=0.99, help="fraction of donors which can be removed by donor removal")
 parser.add_option("--userTrefC", default=0., help="")
 parser.add_option("--bandGap", default=1.21, help="eV used for scaling temperatures")
-parser.add_option("--thickness", default=285, help="Thickness of the sensor. 285 is correct for CMS")
-parser.add_option("--input_profile", default="../../oldPixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1_newL1.txt", help="Input profile file name")
-parser.add_option("--output_root_file", default="testFile.root", help="Output ROOT file name")
+# Dimensions of sensors for CMS are taken from page 68 of https://cds.cern.ch/record/2773267
+parser.add_option("--sensorThickness", default=0.0285, help="Thickness of the sensor in cm. This is correct for CMS")
+parser.add_option("--sensorWidth", default=6.48, help="Width of the sensor in cm. 285 is correct for CMS")
+parser.add_option("--sensorLength", default=1.62, help="Length of the sensor in cm. 285 is correct for CMS")
+parser.add_option("--Ndonor_0", default=1.7e12, help="Initial number of donors for the sensor")
+
 
 (opt, args) = parser.parse_args()
 
 
 # Defining constants used in the analysis
 boltzmanConstant = 8.6173303e-5
-roomTemperature = 294.15
 absoluteZero = 273.15
 
-# set a reference temperature for the volume corrected leakage current plot (it will only effect this one plot!) Now: implemented!
-userTref = absoluteZero + opt.userTrefC; 
+# set a reference temperature for the volume corrected leakage current plot (only affects a couple plots)
+userTrefK = absoluteZero + opt.userTrefC; 
 
 #Recreating this file so we don't end up with a bunch of graphs from old runs
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
@@ -41,7 +48,6 @@ class DataElement:
     doseRate = 0
     coolPipeTemp = 0.
     leakageCurrentData = 0.
-    dleakageCurrentData = 0.
 
 # leakage current constants will be stored in this struct
 # Note: the default values are taken from table 9 of https://cds.cern.ch/record/2773267
@@ -128,6 +134,8 @@ class Sensor:
   # Small value -- just something to compare to to make sure numbers are reasonable
   # Epsilon is used for something else...
   smallNumber = 1e-30;
+
+  # Fundamental constants that are relevant for some of these calculations
   boltzmanConstant = 8.6173303e-5
   electronCharge = 1.6021766208e-13
 
@@ -137,37 +145,43 @@ class Sensor:
   epsilon = 11.68E-12
 
 
-  #T-ref is hardcoded and fixed, it cannot be changed in a trivial way
-  #since the other parameters, especially alpha 0 star were evaluated
-  #at this reference temperature!!!
-  # TODO: This is just for some constants, but does not impact some of the scaling we might want to do, I think??
+  #T-ref cannot be changed in a trivial way since the other parameters (e.g. alpha*_0) were evaluated at this reference temperature!!!
+  # We have 2 different values of Tref based on the difference in the reference temperature for  tables 9 and 10
+  # https://cds.cern.ch/record/2773267/
+  # These are very close to each other, but this difference is intentional
+  # This Tref is useful for scaling of eq. 24 of https://cds.cern.ch/record/2773267/
   Tref = 293.15;
+  # Room temperature (useful for scaling of the tau and Theta functions in eq. 22 of https://cds.cern.ch/record/2773267/)
+  Tref_leakage = 294.15
+
   # According to page 5 of https://iopscience.iop.org/article/10.1088/1748-0221/14/06/P06012/pdf, t0 is one minute = 60 seconds
   t0 = 60.
 
-  # Dimensions of sensors for CMS
-  # Taken from page 68 of https://cds.cern.ch/record/2773267
-  # TODO: take this from the arguments
-  depth = 0.0285
-  width = 6.48
-  length = 1.62
-
   # This parameter is multiplied to all fluence rates from the input profile
   # TODO: Not sure where these numbers come from
+  # TODO: make this configurable
   # Could this be the scaling factor that is discussed in 5.3.1.3?
   # https://cds.cern.ch/record/2773267/files/10.23731_CYRM-2021-001.59.pdf
   # This number is very close to 1, and it mentioned that this was for bpix
   DoseRateScaling = 0.0859955711871/8.9275E-02;
 
-  def __init__(self, leakageCurrentConstants, annealingConstants):
+  def __init__(self, leakageCurrentConstants, annealingConstants, thickness, width, length, Ndonor_0, userTrefK):
         # Things related to conditions
         self.time = 0.0;
         self.totalDose = 0.;
         # IBL       // initial donor concentration (right now the code only works for originally n-type bulk material!)
         # TODO:Figure out how to get the right number
-        # TODO: Make this configurable
-        Ndonor_0 = 1.7e12;             
+        self.Ndonor_0 = Ndonor_0
+        self.userTrefK = userTrefK
 
+        self.annealingConstants = annealingConstants
+        self.leakageCurrentConstants = leakageCurrentConstants
+
+        self.depth = thickness
+        self.width = width
+        self.length = length
+        # Volume in cm^3
+        self.volume=self.depth*self.width*self.length;
 
         self.fill_vector = [];
         self.tmpTimeVector = [];
@@ -217,21 +231,13 @@ class Sensor:
         self.temperature_vector = [];
 
         self.tmpTime_vector_data = [];
-        self.time_vector_data = [];
         self.fluence_vector_data = [];
         self.fill_vector_data = [];
         self.leakageCurrentData = [];
-        self.dleakageCurrentData = [];
 
-
-        # Volume in cm^3
-        self.volume=self.depth*self.width*self.length;
 
         self.Ndonor_stable_donorremoval= opt.donorremovalfraction*abs(self.Nacceptor-self.Ndonor);
         self.Ndonor_const=self.Ndonor-self.Ndonor_stable_donorremoval;
-
-        self.annealingConstants = annealingConstants
-        self.leakageCurrentConstants = leakageCurrentConstants
 
         #Definition of Hamburg model depletion voltage functions
         #Allowing large range of values to determine lots of scaling 
@@ -268,11 +274,10 @@ class Sensor:
 
   def getPerModule(self, leakageCurrent):
     #convert from surface to volume normalisation
-    # Not sure where the 1e-4 term comes from...
     leakageCurrent/=self.depth;
 
     #scale to user defined temperature -- are we sure we shouldn't use the input temperature???
-    volumeNorm = userTref*userTref/(roomTemperature*roomTemperature)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/userTref - 1/roomTemperature))
+    volumeNorm = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage))
     return volumeNorm*leakageCurrent
 
   def getPerVolume(self, leakageCurrent):
@@ -280,7 +285,7 @@ class Sensor:
     leakageCurrent*=sensor.width*sensor.length
   
     #scale to user defined temperature
-    unitSurface = userTref*userTref/(roomTemperature*roomTemperature)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/userTref - 1/roomTemperature));
+    unitSurface = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage));
 
     return unitSurface*leakageCurrent
 
@@ -288,7 +293,7 @@ class Sensor:
   #calculate depletion voltage from given effective doping concentration
   def NtoV_function(self):
     # q/2*epsilon*epsilon_0 * Neff*D^2
-    return self.electronCharge/(2*self.epsilon*self.epsilon0)*abs(self.Neffective)*opt.thickness*opt.thickness;
+    return self.electronCharge/(2*self.epsilon*self.epsilon0)*abs(self.Neffective)*self.depth*self.depth;
 
 
 
@@ -297,10 +302,11 @@ class Sensor:
     # Increment time and dosage
     # Converting to time in days
     self.time += profile.duration / (24.0 * 3600.0);
-    self.tmpTimeVector.append(self.time);
 
     self.totalDose += float(profile.doseRate) * float(profile.duration);
+
     # Append information given by profile
+    self.tmpTimeVector.append(self.time);
     self.fluence_vector.append(self.totalDose);
     self.doseRate_vector.append(profile.doseRate);
     self.duration_vector.append(profile.duration);
@@ -314,7 +320,6 @@ class Sensor:
         self.tmpTime_vector_data.append(self.time);
         self.fluence_vector_data.append(self.totalDose);
         self.leakageCurrentData.append(profile.leakageCurrentData);
-        self.dleakageCurrentData.append(profile.dleakageCurrentData);
         self.flux_vector.append(profile.doseRate);
 
     
@@ -429,11 +434,7 @@ class Sensor:
     
 
     # alpha is the current-related damage rate
-    # TODO why isn't the dose multiplied by the duration?
-    # TODO: Why these numbers
-    
     # Delta I = alpha * Fluence * volume???
-    #print("dose rate", profile.doseRate, "total dose", self.totalDose)
     alpha = G_i_tmp / (self.totalDose + profile.doseRate);
 
     # Page 102 of https://inspirehep.net/files/9def3c9d10b5a5f1d5c3f249f04e139c mentions a range of validity -- maybe this is related???
@@ -442,14 +443,6 @@ class Sensor:
     else:
         self.alpha_vec.append(alpha);
 
-
-    # insert volume here for current per module
-    # The leakage current change is Delta I = alpha* V * Phi (alpha * volume * fluence)
-    # Also, I'm not sure where all these other numbers are comping from, since they don't correspond exactly to the volume that we would calculate
-    # Not sure exactly what this is, but it should convert from a fluence to a luminosity?
-    global_layer_conversion = 6.262e12
-    #self.leakage_current.append(G_i_tmp* global_layer_conversion / self.fluence_vector[-1]);
-    # TODO: Figure out this random factor of 1000 -- maybe converting to mA???
     # Convert current in Amps to mA
     amps_to_mA = 1000.
     self.leakage_current.append(G_i_tmp * amps_to_mA * self.depth);
@@ -486,7 +479,6 @@ def getProfile(filename, sensor):
       temperature = float(words[3])
       doseRate = int(words[4])
       leakageCurrent = float(words[5])
-      dleakageCurrent = 0.;
 
       profileSnapshot = DataElement();
       profileSnapshot.fill = fill;
@@ -494,8 +486,7 @@ def getProfile(filename, sensor):
       profileSnapshot.duration = timestep;
       profileSnapshot.doseRate = doseRate * sensor.DoseRateScaling;
       profileSnapshot.temperature = temperature;
-      profileSnapshot.leakageCurrentData = leakageCurrentScale(leakageCurrent, userTref, profileSnapshot.temperature, opt.bandGap);
-      profileSnapshot.dleakageCurrentData = leakageCurrentScale(dleakageCurrent, userTref, profileSnapshot.temperature, opt.bandGap);
+      profileSnapshot.leakageCurrentData = leakageCurrentScale(leakageCurrent, userTrefK, profileSnapshot.temperature, opt.bandGap);
 
       profile.append(profileSnapshot);
 
@@ -555,18 +546,16 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
     file.Close();
 
 
-# TODO: Read constants values from a config file / understand those values
-# TODO: make this configurable
-annealingConstants = AnnealingConstants("config/annealing_constants.py");
-
+# Read constants values from a config file 
+annealingConstants = AnnealingConstants(opt.inputAnnealingConstants);
 leakageCurrentConstants= LeakageCurrentConstants()
-# iterate through the profile and irradiate the sensor at each step
-sensor = Sensor(leakageCurrentConstants, annealingConstants);
-profile = getProfile(opt.input_profile, sensor);
-max_steps = len(profile);
-print("Profile succesfully read. Length of the profile is: ", max_steps)
 
-for t in range(max_steps):
+sensor = Sensor(leakageCurrentConstants, annealingConstants, thickness=opt.sensorThickness, width=opt.sensorWidth, length = opt.sensorLength, Ndonor_0 = opt.Ndonor_0, userTrefK = userTrefK);
+
+# iterate through the profile and irradiate the sensor at each step
+profile = getProfile(opt.input_profile, sensor);
+print("Profile succesfully read. Length of the profile is: ", len(profile))
+for t in range(len(profile)):
     sensor.irradiate(profile[t])
 
 #data output, plotting and visualisation
@@ -593,7 +582,6 @@ plot_vectors(time_vector, sensor.fluence_vector, "Fluence [n_{eq}/cm^{2}]", "Dat
 
 plot_vectors(time_vector_data, sensor.flux_vector, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux", "date", opt.output_root_file)
 plot_vectors(time_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data", "date", opt.output_root_file)
-plot_vectors(time_vector_data, sensor.dleakageCurrentData, "dI_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Date [days]", "dI_leak_per_module_data", "date", opt.output_root_file)
 
 plot_vectors(time_vector, sensor.N_benef_anneal_g1_vec, "N_{dep, benef_anneal_g1} [V]", "Date [days]", "N_benef_anneal_g1", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.N_revers_anneal_g1_vec, "N_{dep, revers_anneal_g1} [V]", "Date [days]", "N_revers_anneal_g1", "date", opt.output_root_file)
@@ -615,7 +603,6 @@ plot_vectors(sensor.fluence_vector, sensor.powerconsumption, "P [mW/cm^{2}]", "F
 plot_vectors(sensor.fluence_vector, sensor.temperature_vector, "Temperature [K]", "Fluence [n_{eq}/cm^{2}", "temperature_vs_fluence", "fluence", opt.output_root_file)
 
 plot_vectors(sensor.fluence_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "I_leak_per_module_data_vs_fluence", "fluence", opt.output_root_file)
-plot_vectors(sensor.fluence_vector_data, sensor.dleakageCurrentData, "dI_{leak} (@%dC) [mA] per module"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "dI_leak_per_module_data_vs_fluence", "fluence", opt.output_root_file)
 
 plot_vectors(sensor.fill_vector, sensor.leakage_current, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Fill", "I_leak_vs_fill", "fill", opt.output_root_file)
 
