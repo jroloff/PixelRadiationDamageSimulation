@@ -150,6 +150,7 @@ class Sensor:
   # https://cds.cern.ch/record/2773267/
   # These are very close to each other, but this difference is intentional
   # This Tref is useful for scaling of eq. 24 of https://cds.cern.ch/record/2773267/
+  # TODO: Actually, isn't this for the Sheffield model???
   Tref = 293.15;
   # Room temperature (useful for scaling of the tau and Theta functions in eq. 22 of https://cds.cern.ch/record/2773267/)
   Tref_leakage = 294.15
@@ -272,6 +273,7 @@ class Sensor:
   def get_ky(self, T):
     return self.annealingConstants.ky*math.exp(-self.annealingConstants.Ey/(self.boltzmanConstant*T));
 
+  # TODO: maybe this should be at the current temperature, since we will need to scale the data, not just the predictions????
   def getPerModule(self, leakageCurrent):
     #convert from surface to volume normalisation
     leakageCurrent/=self.depth;
@@ -543,6 +545,7 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
     gr.SetName(plotname);
     gr.Write();
 
+    print("Writing ", plotname, " to file ", rootOutputFileName)
     file.Close();
 
 
