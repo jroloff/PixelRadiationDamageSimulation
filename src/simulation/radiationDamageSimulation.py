@@ -137,12 +137,15 @@ class Sensor:
 
   # Fundamental constants that are relevant for some of these calculations
   boltzmanConstant = 8.6173303e-5
+  # Electron charge = 1.6 x 10^-19 C???
+  # Not sure the reason for the discrepancy of 10e6
   electronCharge = 1.6021766208e-13
 
   #Permittivity of vacuum
+  #epsilon0 = 8.85E-12 C^2 kg^-1 m^-3 s^2
   epsilon0 = 8.854187817E-12
   #Permittivity of silicon
-  epsilon = 11.68E-12
+  epsilon = 11.68
 
 
   #T-ref cannot be changed in a trivial way since the other parameters (e.g. alpha*_0) were evaluated at this reference temperature!!!
@@ -174,6 +177,7 @@ class Sensor:
         # TODO:Figure out how to get the right number
         self.Ndonor_0 = Ndonor_0
         self.userTrefK = userTrefK
+        print(Ndonor_0)
 
         self.annealingConstants = annealingConstants
         self.leakageCurrentConstants = leakageCurrentConstants
@@ -295,7 +299,14 @@ class Sensor:
   #calculate depletion voltage from given effective doping concentration
   def NtoV_function(self):
     # q/2*epsilon*epsilon_0 * Neff*D^2
-    return self.electronCharge/(2*self.epsilon*self.epsilon0)*abs(self.Neffective)*self.depth*self.depth;
+    #print(self.Neffective, self.electronCharge/(2*self.epsilon*self.epsilon0), self.electronCharge, self.epsilon, self.epsilon0, self.depth*self.depth)
+    # Note: converting depth from cm to m (1e-2 x 1e-2 = 1e-4) to get units correct
+    value = (self.electronCharge/(2*self.epsilon*self.epsilon0))*abs(self.Neffective)*(self.depth*1e-2 * self.depth*1e-2) 
+    print(value, self.depth)
+    return value;
+
+    #return 1.6021766208e-13/(2*11.68*8.854187817)*fabs(doping_conc)*thickness*thickness;                // q/2*epsilon*epsilon_0 * Neff*D^2
+    # 
 
 
 
