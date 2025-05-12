@@ -177,7 +177,6 @@ class Sensor:
         # TODO:Figure out how to get the right number
         self.Ndonor_0 = Ndonor_0
         self.userTrefK = userTrefK
-        print(Ndonor_0)
 
         self.annealingConstants = annealingConstants
         self.leakageCurrentConstants = leakageCurrentConstants
@@ -302,7 +301,6 @@ class Sensor:
     #print(self.Neffective, self.electronCharge/(2*self.epsilon*self.epsilon0), self.electronCharge, self.epsilon, self.epsilon0, self.depth*self.depth)
     # Note: converting depth from cm to m (1e-2 x 1e-2 = 1e-4) to get units correct
     value = (self.electronCharge/(2*self.epsilon*self.epsilon0))*abs(self.Neffective)*(self.depth*1e-2 * self.depth*1e-2) 
-    print(value, self.depth)
     return value;
 
     #return 1.6021766208e-13/(2*11.68*8.854187817)*fabs(doping_conc)*thickness*thickness;                // q/2*epsilon*epsilon_0 * Neff*D^2
@@ -329,10 +327,12 @@ class Sensor:
 
     # Only fill these ones if there is any data, not just for every time step
     if (profile.leakageCurrentData > 0. and profile.doseRate > 0.):
+        #if( profile.temperature - userTrefK < 0.5 and userTrefK- profile.temperature< 0.5):
+        print(profile.fill, self.totalDose, userTrefK, profile.temperature, profile.leakageCurrentData, leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap))
         self.fill_vector_data.append(profile.fill);
         self.tmpTime_vector_data.append(self.time);
         self.fluence_vector_data.append(self.totalDose);
-        self.leakageCurrentData.append(profile.leakageCurrentData);
+        self.leakageCurrentData.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap));
         self.flux_vector.append(profile.doseRate);
 
     
@@ -471,7 +471,7 @@ class Sensor:
 #function to read in the temp/rad profile
 def leakageCurrentScale(leakageCurrent, T, Tref, bandGap):
     # Taken from equation 25 of https://cds.cern.ch/record/2773267
-    return leakageCurrent*(T*T/(Tref*Tref)*math.exp(-(bandGap/(boltzmanConstant))*(1/T - 1/Tref)));
+    return leakageCurrent*(T*T/(Tref*Tref)*math.exp(-(bandGap/(2*boltzmanConstant))*(1/T - 1/Tref)));
 
 # An array of DataElements that contain the conditions at each time step
 def getProfile(filename, sensor):
@@ -497,9 +497,15 @@ def getProfile(filename, sensor):
       profileSnapshot.fill = fill;
       profileSnapshot.timestamp = timestamp;
       profileSnapshot.duration = timestep;
+      if(timestep < 0):
+        print("The timestep is negative, which should not happen. Check your inputs")
+        print(line)
+        profileSnapshot.duration = 0.001
       profileSnapshot.doseRate = doseRate * sensor.DoseRateScaling;
       profileSnapshot.temperature = temperature;
-      profileSnapshot.leakageCurrentData = leakageCurrentScale(leakageCurrent, userTrefK, profileSnapshot.temperature, opt.bandGap);
+      # Scaling to milliamps from microamps
+      #profileSnapshot.leakageCurrentData = leakageCurrentScale(leakageCurrent/1.e3, userTrefK, profileSnapshot.temperature, opt.bandGap);
+      profileSnapshot.leakageCurrentData = leakageCurrent/1.e3
 
       profile.append(profileSnapshot);
 
