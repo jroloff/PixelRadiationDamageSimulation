@@ -36,7 +36,7 @@ namespace po = boost::program_options;
 // using namespace boost::gregorian;
 // using namespace boost::posix_time;
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // TODO: replace all this by arguments
 // use_CMS_paper_alpha0
@@ -44,27 +44,30 @@ namespace po = boost::program_options;
 // (theta function for time scale change)
 // if true: use CMS approach of temperature average
 // attention: constants can only be changed directly in the code in this case
+
+
+
 bool use_CMS_paper_alpha0 = false;
 // begin date: 2017-05-23 14:32:22.210863
-bool debug = true;                                    // additional debugging console outputs
-bool plot_pdf = false;                                  // plots are by default saved as root file, but can also be directly exported as pdf
+bool debug = true;                                     // additional debugging console outputs
+bool plot_pdf = false;                                 // plots are by default saved as root file, but can also be directly exported as pdf
 bool overwrite_files = true;                           // false = append internal clock identifier to file name, false = overwrite pdfs, append root files // files are by default created with a unique name depending on the internal clock and you can switch it of here such that pdf files are overwritten and the root file is extended (old plots will stay in the root file as well)
 double timestep = 1;                                   // step size is 1 second, do not change this!
 double donorremovalfraction = 0.99;                    // fraction of donors which can be removed by donor removal
 const double userTrefC = 0.;
-double userTref = 273.15 + userTrefC;                          // set a reference temperature for the volume corrected leakage current plot (it will only effect this one plot!) Now: implemented!
+double userTref = 273.15 + userTrefC;                   // set a reference temperature for the volume corrected leakage current plot (it will only effect this one plot!) Now: implemented!
 double bandGap = 1.21;                                 // eV used for scaling temperatures
 
 string startTime = "2018-04-17 09:00:23";
-// date d(2017,May,23);                                  // IBL     //set a date for the plots to begin (to be correct it has to be equal to the beginning of your (!) temp/irr profile)
+// date d(2017,May,23);                                // IBL     //set a date for the plots to begin (to be correct it has to be equal to the beginning of your (!) temp/irr profile)
 boost::posix_time::ptime t1(boost::posix_time::time_from_string(startTime));
-//date d(2011,Feb,11);                               // PIXEL
+//date d(2011,Feb,11);                                // PIXEL
 
 
 const double Ndonor_0 = 1.7e12;                      // IBL       // initial donor concentration (right now the code only works for originally n-type bulk material!)
 //const double Ndonor_0 = 1.4e12;                    // B-Layer Layer1/2 Disks
 
-// double thickness=200;                                // IBL       // sensor thickness
+// double thickness=200;                              // IBL       // sensor thickness
 //double thickness=250;                              // B-Layer Layer1/2 Disks
 double thickness = 285;                                // CMS sensor thickness
 //double global_layer_conversion=0.92e12;            // Layer 1    //conversion factor from luminosity to neq (1fb-1=2.3e12neq/cm2) - is used only for computation of total luminosity, will be wrong if there are multiple conversion factor in the original profiles as for example due to different center of mass energies
