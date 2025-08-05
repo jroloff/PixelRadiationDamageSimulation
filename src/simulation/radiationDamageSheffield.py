@@ -9,12 +9,12 @@ parser = OptionParser()
 parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--output_root_file", default="SheffieldFile.root")
 parser.add_option("--timestep", default=1, help="step size is 1 second, do not change this!")
-parser.add_option("--userTrefC", type="float", default=0.)
-parser.add_option("--bandGap", type="float", default=1.21)
-parser.add_option("--sensorThickness", type="float", default=0.0285)
-parser.add_option("--sensorWidth", type="float", default=6.48)
-parser.add_option("--sensorLength", type="float", default=1.62)
-parser.add_option("--Ndonor_0", type="float", default=1.7e12)
+parser.add_option("--userTrefC", type="float", default=0., help="reference temprature in celsius")
+parser.add_option("--bandGap", type="float", default=1.21, help="eV used for scaling temperatures")
+parser.add_option("--sensorThickness", type="float", default=0.0285, help="Thickness of the sensor in cm. This is correct for CMS")
+parser.add_option("--sensorWidth", type="float", default=6.48, help="Width of the sensor in cm. 285 is correct for CMS")
+parser.add_option("--sensorLength", type="float", default=1.62, help="Length of the sensor in cm. 285 is correct for CMS")
+parser.add_option("--Ndonor_0", type="float", default=1.7e12, help="Initial number of donors for the sensor")
 
 
 (opt, args) = parser.parse_args()
@@ -53,6 +53,14 @@ class LeakageCurrentConstants:
         self.alpha_Tref = 4.81e-17 #A/cm  +/- 0.13 (uncertainty quoted from table 10)
         self.Ak = [0.42, 0.10, 0.23, 0.21, 0.04]  # A/cm # we have 5 values in paper doest explain why???
         self.tauk = [1.2e6, 4.1e4, 3.7e3, 124, 8]  # minutes
+
+#function to read in the temp/rad profile
+def leakageCurrentScale(leakageCurrent, T, Tref, bandGap):
+    return leakageCurrent*(T*T/(Tref*Tref)*math.exp(-(bandGap/(2*boltzmanConstant))*(1/T - 1/Tref)));
+
+def theta(T, Tref, Ei):
+      return math.exp(-Ei / boltzmanConstant * (1. / T - 1. / Tref))
+
 
 class Sensor:
   smallNumber = 1e-30;
@@ -112,81 +120,64 @@ class Sensor:
 
 
 #Getting leakage current per module and and per volume 
-def getPerModule(self, leakageCurrent):
-    #convert from surface to volume normalisation
-     leakageCurrent/=self.depth;
+  def getPerModule(self, leakageCurrent):
+      leakageCurrent/=self.depth;
 
-    #scale to user defined temperature -- are we sure we shouldn't use the input temperature???
-     volumeNorm = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage))
-     return volumeNorm*leakageCurrent
+#scale to user defined temperature -- are we sure we shouldn't use the input temperature???
+      volumeNorm = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage))
+      return volumeNorm*leakageCurrent
 
-def getPerVolume(self, leakageCurrent):
-    #convert from surface to volume normalisation
-     leakageCurrent*=sensor.width*sensor.length
+  def getPerVolume(self, leakageCurrent):
+      leakageCurrent*=sensor.width*sensor.length
 
-    #scale to user defined temperature
-     unitSurface = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage));
+#scale to user defined temperature
+      unitSurface = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage));
 
-     return unitSurface*leakageCurrent
+      return unitSurface*leakageCurrent
 
- 
+  def compute_alpha_sheffield(self):
+      alpha_Tref = self.leakageCurrentConstants.alpha_Tref
+      Ak = self.leakageCurrentConstants.Ak
+      tauk = [tau * 60 for tau in self.leakageCurrentConstants.tauk]
+      cumulative_theta_time = 0.0
+      for i in range(len(self.duration_vector)):
+          alpha_k_list = []
+          T = self.temperature_vector[i]
+          t = self.duration_vector[i]
+          doseRate = self.doseRate_vector[i]
 
-# Sheffield model Formulas
+          theta_i = theta(T, Tref, Ei)
+          cumulative_theta_time += theta_i * t
 
-def theta(T, Tref, Ei):
-    return math.exp(-Ei / boltzmanConstant * (1. / T - 1. / Tref))
+          total_alpha = 0.0
+          for k in range(5):
+              tau_k = tauk[k]
+              A_k = Ak[k]
+              factor = alpha_Tref * A_k * tau_k * theta_i * t
+              decay = 1 - math.exp(-theta_i * t / tau_k)
+              annealing_decay = math.exp(-cumulative_theta_time / tau_k)
 
-#function to read in the temp/rad profile
-def leakageCurrentScale(leakageCurrent, T, Tref, bandGap):
-    # Taken from equation 25 of https://cds.cern.ch/record/2773267
-    return leakageCurrent*(T*T/(Tref*Tref)*math.exp(-(bandGap/(2*boltzmanConstant))*(1/T - 1/Tref)));
-
-def compute_alpha_sheffield(self, temperature_profile):
-    alpha_Tref = self.leakageCurrentConstants.alpha_Tref
-    Ak = self.leakageCurrentConstants.Ak
-    tauk = [tau * 60 for tau in self.leakageCurrentConstants.tauk]
-    cumulative_theta_time = 0.0
-    for i in range(len(self.duration_vector)):
-        T = self.temperature_vector[i]
-        t = self.duration_vector[i]
-        doseRate = self.doseRate_vector[i]
-
-        theta_i = theta(T, Tref, Ei)
-        cumulative_theta_time += theta_i * t
-
-        total_alpha = 0.0
-        for k in range(5):
-            tau_k = tauk[k]
-            A_k = Ak[k]
-            factor = alpha_Tref * A_k * tau_k * theta_i * t
-            decay = 1 - math.exp(-theta_i * t / tau_k)
-            annealing_decay = math.exp(-cumulative_theta_time / tau_k)
-
-            alpha_k = factor * decay * annealing_decay
-            total_alpha += alpha_k
-            alpha_k_list.append(alpha_k)
+              alpha_k = factor * decay * annealing_decay
+              total_alpha += alpha_k
+              alpha_k_list.append(alpha_k)
              # Store individual alpha_k values
-            self.alpha1_vector.append(alpha_k_list[0])
-            self.alpha2_vector.append(alpha_k_list[1])
-            self.alpha3_vector.append(alpha_k_list[2])
-            self.alpha4_vector.append(alpha_k_list[3])
-            self.alpha5_vector.append(alpha_k_list[4])
-            self.alpha_total_vector.append(total_alpha)
+              self.alpha1_vector.append(alpha_k_list[0])
+              self.alpha2_vector.append(alpha_k_list[1])
+              self.alpha3_vector.append(alpha_k_list[2])
+              self.alpha4_vector.append(alpha_k_list[3])
+              self.alpha5_vector.append(alpha_k_list[4])
+              self.alpha_total_vector.append(total_alpha)
 
-            fluence_i = doseRate * t  # [neq/cm²]
-            Ileak = total_alpha * fluence_i * self.volume
+              fluence_i = doseRate * t  # [neq/cm²]
+              Ileak = total_alpha * fluence_i * self.volume
 
-            self.leakage_current.append(Ileak)
-            self.leakage_current_per_module.append(self.getPerModule(Ileak))
-            self.leakage_current_per_volume.append(self.getPerVolume(Ileak))
-            self.leakage_current_Tref.append(leakageCurrentScale(Ileak, T, Tref, opt.bandGap))
+              self.leakage_current.append(Ileak)
+              self.leakage_current_per_module.append(self.getPerModule(Ileak))
+              self.leakage_current_per_volume.append(self.getPerVolume(Ileak))
+              self.leakage_current_Tref.append(leakageCurrentScale(Ileak, T, Tref, opt.bandGap))
 
-def irradiate(self, profile):
-
-    # Increment time and dosage
-    # Converting to time in days
+  def irradiate(self, profile):
       self.time += profile.duration / (24.0 * 3600.0);
-
       self.totalDose += float(profile.doseRate) * float(profile.duration);
 
     # Append information given by profile
@@ -197,8 +188,6 @@ def irradiate(self, profile):
 
       self.temperature_vector.append(profile.temperature);
       self.fill_vector.append(profile.fill);
-
-    # Only fill these ones if there is any data, not just for every time step
       if (profile.leakageCurrentData > 0. and profile.doseRate > 0.):
           print(profile.fill, self.totalDose, userTrefK, profile.temperature, profile.leakageCurrentData, leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap))
           self.fill_vector_data.append(profile.fill);
@@ -206,30 +195,6 @@ def irradiate(self, profile):
           self.fluence_vector_data.append(self.totalDose);
           self.leakageCurrentData.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap));
           self.flux_vector.append(profile.doseRate);
-
-
-      G_i_tmp = 0;
-    # TODO: not sure if there is a better name for G_i...
-      for i in range(len(self.beta_contribution_vector)):
-          if i>0 :
-              G_i_tmp += int(self.doseRate_vector[i]) * self.duration_vector[i]*( self.leakageCurrentConstants.alpha_1 * math.exp(-(self.alpha1_contribution_sum_vector[-1] - self.alpha1_contribution_sum_vector[i-1])) + self.leakageCurrentConstants.alpha_0_star  - self.leakageCurrentConstants.beta * math.log(self.beta_contribution_sum_vector[-1] - self.beta_contribution_sum_vector[i-1]));
-          else:
-              G_i_tmp += int(self.doseRate_vector[i]) * self.duration_vector[i]*( self.leakageCurrentConstants.alpha_1 * math.exp(-(self.alpha1_contribution_sum_vector[-1])) + self.leakageCurrentConstants.alpha_0_star  - self.leakageCurrentConstants.beta * math.log(self.beta_contribution_sum_vector[-1]))
-              self.G_i.append(G_i_tmp);
-              alpha = G_i_tmp / (self.totalDose + profile.doseRate);
-              if (alpha > 5e-16):
-                  self.alpha_vec.append(1e-17);
-              else:
-                  self.alpha_vec.append(alpha);
-   # Convert current in Amps to mA
-      amps_to_mA = 1000.
-      self.leakage_current.append(G_i_tmp * amps_to_mA * self.depth);
-      self.powerconsumption.append(self.leakage_current[-1] * self.NtoV_function());
-
-    # TODO: may need to fix these functions, not sure
-    # Convert to per volume or per module units
-      self.leakage_current_per_volume.append(self.getPerVolume(self.leakage_current[-1]))
-      self.leakage_current_per_module.append(self.getPerModule(self.leakage_current[-1]))
 
 
 # An array of DataElements that contain the conditions at each time step
@@ -333,18 +298,19 @@ sensor = Sensor(leakageCurrentConstants, thickness=opt.sensorThickness, width=op
 # iterate through the profile and irradiate the sensor at each step
 profile = getProfile(opt.input_profile, sensor);
 print("Profile succesfully read. Length of the profile is: ", len(profile))
-#for t in range(len(profile)):
-#    sensor.irradiate(profile[t])
-
+for t in range(len(profile)):
+    sensor.irradiate(profile[t])
+sensor.compute_alpha_sheffield()
 #data output, plotting and visualisation
 print("Processing finished, writing data...")
 
 beginTime = getBeginTime(profile);
 time_vector = convertDatetime(sensor.tmpTimeVector, beginTime)
 
-print(sensor.alpha_vector)
-print(time_vector)
-print(leakage_current)
+print("Alpha vector:", sensor.alpha_vector)
+print("Time vector:", time_vector)
+print("Leakage current:", sensor.leakage_current)
+
 # plots as function of time
 
 plot_vectors(time_vector, sensor.alpha_vector, "#alpha [A/cm]", "Date [days]", "alpha", "date", opt.output_root_file)
