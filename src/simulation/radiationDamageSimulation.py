@@ -7,7 +7,7 @@ from array import array
 
 parser = OptionParser()
 #These are the main options that should be changed
-parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR2/profile_BPix_BmI_SEC1_LYR2_phase1_newL1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_year/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_2017_2018_3.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--inputAnnealingConstants", default="config/annealing_constants.py", help="Input annealing constants file name")
 parser.add_option("--output_root_file", default="testFile.root", help="Output ROOT file name")
 # These are options that shoudlb e changed if you are using different sensors etc.
@@ -480,13 +480,14 @@ def getProfile(filename, sensor):
     myfile = open(filename, "r")
 
     print( "Reading temperature/radiation file: ", filename)
-
+    
     for index, line in enumerate( myfile):
       #Ignoring the first line of the file, which just has some extra info
       if index == 0: 
         continue
       words = line.split()
       fill = int(words[0])
+      print(f"Index: {index}, Fill: {fill}")
       timestamp = int(words[1])
       timestep = int(words[2])
       temperature = float(words[3])
@@ -529,7 +530,7 @@ def convertDatetime(dateVector, beginTime):
     d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*daysInSeconds)
     da = ROOT.TDatime(d2.date().year, d2.date().month, d2.date().day, d2.time().hour, d2.time().minute, d2.time().second);
     reformattedVec.append(da.Convert());
-
+    
   return reformattedVec
 
 
