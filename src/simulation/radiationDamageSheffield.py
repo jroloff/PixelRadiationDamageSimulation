@@ -6,7 +6,7 @@ from array import array
 
 #Command line 
 parser = OptionParser()
-parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_year/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_2017_2018_3.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--output_root_file", default="SheffieldFile.root")
 parser.add_option("--timestep", default=1, help="step size is 1 second, do not change this!")
 parser.add_option("--userTrefC", type="float", default=0., help="reference temprature in celsius")
@@ -124,14 +124,14 @@ class Sensor:
       leakageCurrent/=self.depth;
 
 #scale to user defined temperature -- are we sure we shouldn't use the input temperature???
-      volumeNorm = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage))
+      volumeNorm = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage))
       return volumeNorm*leakageCurrent
 
   def getPerVolume(self, leakageCurrent):
       leakageCurrent*=sensor.width*sensor.length
 
 #scale to user defined temperature
-      unitSurface = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*self.boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage));
+      unitSurface = self.userTrefK*self.userTrefK/(self.Tref_leakage*self.Tref_leakage)*math.exp(-(opt.bandGap/(2*boltzmanConstant))*(1/self.userTrefK - 1/self.Tref_leakage));
 
       return unitSurface*leakageCurrent
 
@@ -160,21 +160,21 @@ class Sensor:
               alpha_k = factor * decay * annealing_decay
               total_alpha += alpha_k
               alpha_k_list.append(alpha_k)
-             # Store individual alpha_k values
-              self.alpha1_vector.append(alpha_k_list[0])
-              self.alpha2_vector.append(alpha_k_list[1])
-              self.alpha3_vector.append(alpha_k_list[2])
-              self.alpha4_vector.append(alpha_k_list[3])
-              self.alpha5_vector.append(alpha_k_list[4])
-              self.alpha_total_vector.append(total_alpha)
+           # Store individual alpha_k values
+          self.alpha1_vector.append(alpha_k_list[0])
+          self.alpha2_vector.append(alpha_k_list[1])
+          self.alpha3_vector.append(alpha_k_list[2])
+          self.alpha4_vector.append(alpha_k_list[3])
+          self.alpha5_vector.append(alpha_k_list[4])
+          self.alpha_total_vector.append(total_alpha)
 
-              fluence_i = doseRate * t  # [neq/cm²]
-              Ileak = total_alpha * fluence_i * self.volume
+          fluence_i = doseRate * t  # [neq/cm²]
+          Ileak = total_alpha * fluence_i * self.volume
 
-              self.leakage_current.append(Ileak)
-              self.leakage_current_per_module.append(self.getPerModule(Ileak))
-              self.leakage_current_per_volume.append(self.getPerVolume(Ileak))
-              self.leakage_current_Tref.append(leakageCurrentScale(Ileak, T, Tref, opt.bandGap))
+          self.leakage_current.append(Ileak)
+          self.leakage_current_per_module.append(self.getPerModule(Ileak))
+          self.leakage_current_per_volume.append(self.getPerVolume(Ileak))
+          self.leakage_current_Tref.append(leakageCurrentScale(Ileak, T, Tref, opt.bandGap))
 
   def irradiate(self, profile):
       self.time += profile.duration / (24.0 * 3600.0);
@@ -307,17 +307,17 @@ print("Processing finished, writing data...")
 beginTime = getBeginTime(profile);
 time_vector = convertDatetime(sensor.tmpTimeVector, beginTime)
 
-print("Alpha vector:", sensor.alpha_vector)
-print("Time vector:", time_vector)
-print("Leakage current:", sensor.leakage_current)
+#print("Alpha vector:", sensor.alpha_total_vector
+#print("Time vector:", time_vector)
+#print("Leakage current:", sensor.leakage_current)
 
 # plots as function of time
 
-plot_vectors(time_vector, sensor.alpha_vector, "#alpha [A/cm]", "Date [days]", "alpha", "date", opt.output_root_file)
+plot_vectors(time_vector, sensor.alpha_total_vector, "#alpha [A/cm]", "Date [days]", "alpha", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Date [days]", "I_leak", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_module, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_volume, "I_{leak} (@%d C) [mA/cm^{3}]", "Date [days]", "I_leak_volume", "date", opt.output_root_file)
-plot_vectors(time_vector, sensor.G_i, "G_{i} [A/cm^{3}]", "Date [days]", "G_i", "date", opt.output_root_file)
+#plot_vectors(time_vector, sensor.G_i, "G_{i} [A/cm^{3}]", "Date [days]", "G_i", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.powerconsumption, "P [mW/cm^{2}]", "Date [days]", "powerconsumption", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.temperature_vector, "Temperature [K]", "Date [days]", "temperature", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.fluence_vector, "Fluence [n_{eq}/cm^{2}]", "Date [days]", "fluence", "date", opt.output_root_file)

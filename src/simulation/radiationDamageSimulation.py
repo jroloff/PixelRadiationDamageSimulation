@@ -603,6 +603,8 @@ plot_vectors(time_vector, sensor.fluence_vector, "Fluence [n_{eq}/cm^{2}]", "Dat
 
 plot_vectors(time_vector_data, sensor.flux_vector, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux", "date", opt.output_root_file)
 plot_vectors(time_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data", "date", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data", "fill", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data, sensor.temperature_vector, "Temperature [K]", "Fill", "Temperature_vs_fill_data", "fill", opt.output_root_file)
 
 plot_vectors(time_vector, sensor.N_benef_anneal_g1_vec, "N_{dep, benef_anneal_g1} [V]", "Date [days]", "N_benef_anneal_g1", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.N_revers_anneal_g1_vec, "N_{dep, revers_anneal_g1} [V]", "Date [days]", "N_revers_anneal_g1", "date", opt.output_root_file)
@@ -626,6 +628,7 @@ plot_vectors(sensor.fluence_vector, sensor.temperature_vector, "Temperature [K]"
 plot_vectors(sensor.fluence_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "I_leak_per_module_data_vs_fluence", "fluence", opt.output_root_file)
 
 plot_vectors(sensor.fill_vector, sensor.leakage_current, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Fill", "I_leak_vs_fill", "fill", opt.output_root_file)
+
 
 print(opt.output_root_file, " has been created")
 
