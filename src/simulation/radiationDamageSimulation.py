@@ -7,7 +7,7 @@ from array import array
 
 parser = OptionParser()
 #These are the main options that should be changed
-parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_year/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_2017_2018_3.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--inputAnnealingConstants", default="config/annealing_constants.py", help="Input annealing constants file name")
 parser.add_option("--output_root_file", default="testFile.root", help="Output ROOT file name")
 # These are options that shoudlb e changed if you are using different sensors etc.
@@ -512,8 +512,33 @@ def getProfile(filename, sensor):
 
     myfile.close();
 
-    return profile;
+    #return profile;
+#..................................................................................... New implementation........................    
+ #   missing_fill_start = 6432
+  #  missing_fill_end = 6569
 
+# Find where to insert the dummy fills
+   # insert_index = 0
+    #for i, p in enumerate(profile):
+     #   if p.fill >= missing_fill_start:
+      #      insert_index = i
+       #     break
+   # dummy_profiles = []
+ #   for fill_num in range(missing_fill_start, missing_fill_end + 1):
+  #      dummy = DataElement()
+   #     dummy.fill = fill_num
+    #    dummy.timestamp = None  # No timestamp since it's dummy
+     #   dummy.duration = 0      # Zero duration for missing fills
+      #  dummy.doseRate = 0.0
+#        if insert_index > 0:
+ #           dummy.temperature = profile[insert_index - 1].temperature
+  #      else:
+   #         dummy.temperature = 20.0
+    #        dummy.leakageCurrentData = 0.0
+     #       dummy_profiles.append(dummy)
+  #  profile = profile[:insert_index] + dummy_profiles + profile[insert_index:]
+#....................................................................................................................................................    
+    return profile;
 def getBeginTime(profile):
     timestamp = profile[0].timestamp;
     beginTime = datetime.datetime.fromtimestamp(timestamp);

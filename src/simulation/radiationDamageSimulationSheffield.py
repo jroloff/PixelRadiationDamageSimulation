@@ -6,7 +6,7 @@ from array import array
 
 #Command line 
 parser = OptionParser()
-parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles//per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--output_root_file", default="SheffieldFile.root")
 parser.add_option("--timestep", default=1, help="step size is 1 second, do not change this!")
 parser.add_option("--userTrefC", type="float", default=0.)

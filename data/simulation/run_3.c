@@ -15,7 +15,7 @@ void run_3() {
     gStyle->SetTitleFont(42, "XYZ");
     gStyle->SetLabelFont(42, "XYZ");
 
-    TFile *_file0 = TFile::Open("/afs/cern.ch/user/s/singhsh/PixelRadiationDamageSimulation/testFile.root", "READ");
+    TFile *_file0 = TFile::Open("/afs/cern.ch/user/s/singhsh/PixelRadiationDamageSimulation/TestFile.root", "READ");
 
     if (!_file0 || _file0->IsZombie()) {
         std::cerr << "Error opening testFile.root" << std::endl;

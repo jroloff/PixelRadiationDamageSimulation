@@ -6,7 +6,7 @@ from array import array
 
 #Command line 
 parser = OptionParser()
-parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_year/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_2017_2018_3.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--output_root_file", default="SheffieldFile.root")
 parser.add_option("--timestep", default=1, help="step size is 1 second, do not change this!")
 parser.add_option("--userTrefC", type="float", default=0., help="reference temprature in celsius")
@@ -317,27 +317,21 @@ plot_vectors(time_vector, sensor.alpha_total_vector, "#alpha [A/cm]", "Date [day
 plot_vectors(time_vector, sensor.leakage_current, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Date [days]", "I_leak", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_module, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_volume, "I_{leak} (@%d C) [mA/cm^{3}]", "Date [days]", "I_leak_volume", "date", opt.output_root_file)
-#plot_vectors(time_vector, sensor.G_i, "G_{i} [A/cm^{3}]", "Date [days]", "G_i", "date", opt.output_root_file)
-plot_vectors(time_vector, sensor.powerconsumption, "P [mW/cm^{2}]", "Date [days]", "powerconsumption", "date", opt.output_root_file)
+
+
 plot_vectors(time_vector, sensor.temperature_vector, "Temperature [K]", "Date [days]", "temperature", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.fluence_vector, "Fluence [n_{eq}/cm^{2}]", "Date [days]", "fluence", "date", opt.output_root_file)
 
-plot_vectors(time_vector_data, sensor.flux_vector, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux", "date", opt.output_root_file)
-plot_vectors(time_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data", "date", opt.output_root_file)
+plot_vectors(time_vector, sensor.flux_vector, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux", "date", opt.output_root_file)
+plot_vectors(time_vector, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data", "date", opt.output_root_file)
 
 
 
 #plots as function of dose
-plot_vectors(sensor.fluence_vector, sensor.Neff_vector, "N_{eff} [1/cm^{3}]", "Fluence [n_{eq}/cm^{2}]", "Neff_vs_fluence", "fluence", opt.output_root_file)
-plot_vectors(sensor.fluence_vector, sensor.N_donor_vec, "N_{donor} [1/cm^{3}]", "Fluence [n_{eq}/cm^{2}]", "Ndonors_vs_fluence", "fluence", opt.output_root_file)
-plot_vectors(sensor.fluence_vector, sensor.Nacceptor_vector, "N_{acceptor} [1/cm^{3}]", "Fluence [n_{eq}/cm^{2}]", "Nacceptors_vs_fluence", "fluence", opt.output_root_file)
-plot_vectors(sensor.fluence_vector, sensor.V_dep_vector, "U_{dep} [V]", "Fluence [n_{eq}/cm^{2}]", "U_dep_vs_fluence", "fluence", opt.output_root_file)
-plot_vectors(sensor.fluence_vector, sensor.alpha_vec, "#alpha [A/cm]", "Fluence [n_{eq}/cm^{2}]", "alpha_vs_fluence", "fluence", opt.output_root_file)
+
 plot_vectors(sensor.fluence_vector, sensor.leakage_current, "I_{leak} [mA/cm^{2}]", "Fluence [n_{eq}/cm^{2}]", "I_leak_vs_fluence", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_per_module, "I_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Date [days]", "I_leak_per_module_vs_fluence", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_per_volume, "I_{leak} (@%d C) [mA/cm^{3}]"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "I_leak_volume_vs_fluence", "fluence", opt.output_root_file)
-plot_vectors(sensor.fluence_vector, sensor.G_i, "G_{i} [A/cm^{3}]", "Fluence [n_{eq}/cm^{2}]", "G_i_vs_fluence", "fluence", opt.output_root_file)
-plot_vectors(sensor.fluence_vector, sensor.powerconsumption, "P [mW/cm^{2}]", "Fluence [n_{eq}/cm^{2}]", "powerconsumption_vs_fluence", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.temperature_vector, "Temperature [K]", "Fluence [n_{eq}/cm^{2}", "temperature_vs_fluence", "fluence", opt.output_root_file)
 
 plot_vectors(sensor.fluence_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "I_leak_per_module_data_vs_fluence", "fluence", opt.output_root_file)
