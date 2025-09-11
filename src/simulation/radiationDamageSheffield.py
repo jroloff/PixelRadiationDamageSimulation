@@ -7,7 +7,7 @@ from array import array
 #Command line 
 parser = OptionParser()
 parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
-parser.add_option("--output_root_file", default="SheffieldFile.root")
+parser.add_option("--output_root_file", default="SheffieldFiles.root")
 parser.add_option("--timestep", default=1, help="step size is 1 second, do not change this!")
 parser.add_option("--donorremovalfraction", default=0.99, help="fraction of donors which can be removed by donor removal")
 parser.add_option("--userTrefC", type="float", default=0., help="reference temprature in celsius")
@@ -58,7 +58,7 @@ class LeakageCurrentConstants:
 
 #function to read in the temp/rad profile
 def leakageCurrentScale(leakageCurrent, T, Tref, bandGap):
-    return leakageCurrent*((Tref*Tref/T*T)*math.exp(-(bandGap/(2*boltzmanConstant))*(1/T - 1/Tref)));
+    return leakageCurrent*(((Tref*Tref)/(T*T))*math.exp(-(bandGap/(2*boltzmanConstant))*(1/T - 1/Tref)));
 
 def theta(T,Tref, Ei):
     return math.exp(-Ei / boltzmanConstant * (1. / T - 1. / Tref))
@@ -154,11 +154,12 @@ class Sensor:
           self.fluence_vector_data.append(self.totalDose);
           self.leakageCurrentData.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap));
           self.flux_vector.append(profile.doseRate);
-    
+
+           
   def compute_alpha_sheffield(self):
       alpha_Tref = self.leakageCurrentConstants.alpha_Tref
       Ak = self.leakageCurrentConstants.Ak
-      tauk = [tau * 60 for tau in self.leakageCurrentConstants.tauk]  # convert min → s
+      tauk = [tau * 60 for tau in self.leakageCurrentConstants.tauk]  # in second
 
       cumulative_theta = 0.0
       totalDose = 0.0
@@ -170,8 +171,11 @@ class Sensor:
 
           
           theta_j = theta(T, Tref, Ei)
+          if theta_j == 0:
+              theta_j = 1e-12
           cumulative_theta += theta_j * t
           totalDose += doseRate * t  
+          print(f"i={i}, T={T}, t={t}, doseRate={doseRate}, theta_j={theta_j}")
 
           total_alpha = 0.0
           alpha_k_list = []
@@ -180,7 +184,7 @@ class Sensor:
               tau_k = tauk[k]
               A_k = Ak[k]
 
-              # Eq. 24 components
+              # Eq. 24 
               prefactor = alpha_Tref * (A_k * tau_k) / (theta_j * t)
               decay = 1 - math.exp(-theta_j * t / tau_k)
               annealing_decay = math.exp(-cumulative_theta / tau_k)
@@ -189,22 +193,23 @@ class Sensor:
               total_alpha += alpha_k
               alpha_k_list.append(alpha_k)
 
-          # Store per-component α contributions
-      self.alpha1_vector.append(alpha_k_list[0])
-      self.alpha2_vector.append(alpha_k_list[1])
-      self.alpha3_vector.append(alpha_k_list[2])
-      self.alpha4_vector.append(alpha_k_list[3])
-      self.alpha5_vector.append(alpha_k_list[4])
-      self.alpha_total_vector.append(total_alpha)
+          
+          self.alpha1_vector.append(alpha_k_list[0])
+          self.alpha2_vector.append(alpha_k_list[1])
+          self.alpha3_vector.append(alpha_k_list[2])
+          self.alpha4_vector.append(alpha_k_list[3])
+          self.alpha5_vector.append(alpha_k_list[4])
+          self.alpha_total_vector.append(total_alpha)
 
-          # Leakage current: I = α * Φ * V
-      fluence_i = totalDose
-      Ileak = total_alpha * fluence_i * self.volume
+          # Leakage current
+          fluence_i = totalDose
+          Ileak = total_alpha * fluence_i * self.volume
+
       
-      self.leakage_current.append(Ileak)
-      self.leakage_current_per_module.append(self.getPerModule(Ileak))
-      self.leakage_current_per_volume.append(self.getPerVolume(Ileak))
-      self.leakage_current_Tref.append(leakageCurrentScale(Ileak, T, Tref, opt.bandGap))
+          self.leakage_current.append(Ileak)
+          self.leakage_current_per_module.append(self.getPerModule(Ileak))
+          self.leakage_current_per_volume.append(self.getPerVolume(Ileak))
+          self.leakage_current_Tref.append(leakageCurrentScale(Ileak, T, Tref, opt.bandGap))
 
 
 # An array of DataElements that contain the conditions at each time step
