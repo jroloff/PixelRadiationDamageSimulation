@@ -7,7 +7,7 @@ from array import array
 
 parser = OptionParser()
 #These are the main options that should be changed
-parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_year/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_2022.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--inputAnnealingConstants", default="config/annealing_constants.py", help="Input annealing constants file name")
 parser.add_option("--output_root_file", default="testFile.root", help="Output ROOT file name")
 # These are options that shoudlb e changed if you are using different sensors etc.
@@ -312,12 +312,12 @@ class Sensor:
 
     # Increment time and dosage
     # Converting to time in days
-    self.time += profile.duration / (24.0 * 3600.0);
+    self.time += profile.duration / (24.0 * 3600.0); 
 
     self.totalDose += float(profile.doseRate) * float(profile.duration);
 
     # Append information given by profile
-    self.tmpTimeVector.append(self.time);
+    self.tmpTimeVector.append(self.time);   
     self.fluence_vector.append(self.totalDose);
     self.doseRate_vector.append(profile.doseRate);
     self.duration_vector.append(profile.duration);
@@ -512,7 +512,7 @@ def getProfile(filename, sensor):
 
     myfile.close();
 
-    #return profile;
+    return profile;
 #..................................................................................... New implementation........................    
  #   missing_fill_start = 6432
   #  missing_fill_end = 6569
@@ -538,7 +538,7 @@ def getProfile(filename, sensor):
      #       dummy_profiles.append(dummy)
   #  profile = profile[:insert_index] + dummy_profiles + profile[insert_index:]
 #....................................................................................................................................................    
-    return profile;
+    
 def getBeginTime(profile):
     timestamp = profile[0].timestamp;
     beginTime = datetime.datetime.fromtimestamp(timestamp);
@@ -550,12 +550,11 @@ def convertDatetime(dateVector, beginTime):
   reformattedVec = []
 
   for k in range(len(dateVector)):
-    # Convert to seconds based on the date
-    daysInSeconds = 86400
-    d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*daysInSeconds)
-    da = ROOT.TDatime(d2.date().year, d2.date().month, d2.date().day, d2.time().hour, d2.time().minute, d2.time().second);
-    reformattedVec.append(da.Convert());
-    
+     # Convert to seconds based on the date
+      daysInSeconds = 86400
+      d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*daysInSeconds)
+      da = ROOT.TDatime(d2.date().year, d2.date().month, d2.date().day, d2.time().hour, d2.time().minute, d2.time().second);
+      reformattedVec.append(da.Convert());
   return reformattedVec
 
 
@@ -575,22 +574,25 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
       t_vdepvector.append(i)
     gr = ROOT.TGraph(len(vecx),t_timevector, t_vdepvector);
 
+
     #in case of plot as a function of time, convert the days from simulation into a more handy date
     if(mode=="date") :
         gr.GetXaxis().SetTimeDisplay(1);
         gr.GetXaxis().SetNdivisions(6, 2, 0);
         gr.GetXaxis().SetTimeFormat("%d/%m/%Y");
         gr.GetXaxis().SetTimeOffset(0, "gmt");
-
+        start_time = min(t_timevector)
+        end_time   = max(t_timevector)
+        gr.GetXaxis().SetRangeUser(start_time, end_time)
+        print("X-axis range:", start_time, end_time)
     gr.GetXaxis().SetTitle(xName);
     gr.GetYaxis().SetTitle(yName);
 
     gr.SetName(plotname);
     gr.Write();
-
     print("Writing ", plotname, " to file ", rootOutputFileName)
     file.Close();
-
+    
 
 # Read constants values from a config file 
 annealingConstants = AnnealingConstants(opt.inputAnnealingConstants);
@@ -610,7 +612,6 @@ print("Processing finished, writing data...")
 beginTime = getBeginTime(profile);
 time_vector = convertDatetime(sensor.tmpTimeVector, beginTime)
 time_vector_data = convertDatetime(sensor.tmpTime_vector_data, beginTime)
-
 
 # plots as function of time
 plot_vectors(time_vector, sensor.Neff_vector, "N_{eff} [1/cm^{3}]", "Date [days]", "Neff", "date", opt.output_root_file)

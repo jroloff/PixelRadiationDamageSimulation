@@ -15,7 +15,7 @@ void run_3() {
     gStyle->SetTitleFont(42, "XYZ");
     gStyle->SetLabelFont(42, "XYZ");
 
-    TFile *_file0 = TFile::Open("/afs/cern.ch/user/s/singhsh/PixelRadiationDamageSimulation/TestFile.root", "READ");
+    TFile *_file0 = TFile::Open("/afs/cern.ch/user/s/singhsh/PixelRadiationDamageSimulation/testFile.root", "READ");
 
     if (!_file0 || _file0->IsZombie()) {
         std::cerr << "Error opening testFile.root" << std::endl;
@@ -95,7 +95,7 @@ void run_3() {
       tempLabel->SetNDC();
       tempLabel->SetTextFont(42);
       tempLabel->SetTextSize(0.08);
-      tempLabel->DrawLatex(0.35, 0.7, "Sensor Temperature");
+      tempLabel->DrawLatex(0.55, 0.5, "Sensor Temperature");
 // Middle pad with Leakage current Data and simulation
        padM->cd();
        graph1->SetTitle("");
@@ -116,15 +116,19 @@ void run_3() {
        graph2->SetMarkerStyle(22);      
        graph2->SetMarkerColor(kBlue);
        graph2->Draw("P SAME");
+       
+
        const double Eg = 1.21;             
        const double kB = 8.617e-5;         
        
  // Creating the error band around graph2
 
-       TGraphAsymmErrors* band = new TGraphAsymmErrors(graph2->GetN());
+       TGraphAsymmErrors* band = new TGraphAsymmErrors();
        for (int k = 0; k < graph2->GetN(); ++k) {
             double x, y;
             graph2->GetPoint(k, x, y);
+            
+	    if (y <= 0) continue;
 
  // Get corresponding temperature
             double xT, T;
@@ -139,9 +143,10 @@ void run_3() {
 
             double errYHigh = I_plus - y;
             double errYLow = y - I_minus;
-
-            band->SetPoint(k, x, y);
-            band->SetPointError(k, 0, 0, errYLow, errYHigh); 
+            
+	    int idx = band->GetN();
+            band->SetPoint(idx, x, y);
+            band->SetPointError(idx, 0, 0, errYLow, errYHigh); 
 }
         band->SetFillColor(kGreen - 10);
         band->SetLineColor(kGreen + 2);
@@ -151,13 +156,13 @@ void run_3() {
 
         band->Draw("3");        
 
-       TLegend *legend = new TLegend(0.25, 0.75, 0.45, 0.88);
+       TLegend *legend = new TLegend(0.4, 0.75, 0.6, 0.88);
 
        legend->SetBorderSize(0);
        legend->SetFillStyle(0);
        legend->SetTextFont(42);
        legend->SetTextSize(0.035);
-       legend->AddEntry(graph1, "Leakage current (Data) 2017-2018 Layer 1", "lp");
+       legend->AddEntry(graph1, "Leakage current (Data) 2017-2022 Layer 1", "lp");
        legend->AddEntry(graph2, "Leakage current (Simulation)", "lp");
        legend->AddEntry(band, "Temperature Uncertainty \xB1 2 K", "f");
        legend->Draw();
@@ -171,13 +176,16 @@ void run_3() {
         double x_data, y_data, x_sim, y_sim;
         graph1->GetPoint(j, x_data, y_data);
         graph2->GetPoint(j, x_sim, y_sim);
-        if (y_data != 0) {
-        ratioGraph->SetPoint(j, x_data, y_data / y_sim);
-        }
+        if (y_sim <= 0 || y_data <= 0) continue;
+	double ratio = y_data / y_sim;
+	if (ratio < 0.2 || ratio > 1.5) continue;
+	int idx = ratioGraph->GetN();
+        ratioGraph->SetPoint(idx, x_data, ratio);
+       
     }
       ratioGraph->SetMarkerStyle(21);
       ratioGraph->SetMarkerColor(kBlue+2);
-      ratioGraph->SetMarkerSize(0.6);
+      ratioGraph->SetMarkerSize(0.8);
       ratioGraph->SetTitle("");
       ratioGraph->GetYaxis()->SetTitle("Data/Model");
       ratioGraph->GetYaxis()->SetTitleSize(0.07);
@@ -189,7 +197,10 @@ void run_3() {
       ratioGraph->GetXaxis()->SetTimeDisplay(1);
       ratioGraph->GetXaxis()->SetTimeFormat("%d/%m/%Y");
       ratioGraph->GetXaxis()->SetTimeOffset(0, "gmt");
+      ratioGraph->GetYaxis()->SetRangeUser(0, 3);
+
       ratioGraph->Draw("AP");
+      
 
 
        canvas1->Update();
