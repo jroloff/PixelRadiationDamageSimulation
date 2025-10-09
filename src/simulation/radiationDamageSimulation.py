@@ -30,7 +30,7 @@ boltzmanConstant = 8.6173303e-5
 absoluteZero = 273.15
 
 # set a reference temperature for the volume corrected leakage current plot (only affects a couple plots)
-userTrefK = absoluteZero + float(opt.userTrefC); 
+userTrefK = absoluteZero + opt.userTrefC; 
 
 #Recreating this file so we don't end up with a bunch of graphs from old runs
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
@@ -312,12 +312,12 @@ class Sensor:
 
     # Increment time and dosage
     # Converting to time in days
-    self.time += profile.duration / (24.0 * 3600.0); 
+    self.time += profile.duration / (24.0 * 3600.0);
 
     self.totalDose += float(profile.doseRate) * float(profile.duration);
 
     # Append information given by profile
-    self.tmpTimeVector.append(self.time);   
+    self.tmpTimeVector.append(self.time);
     self.fluence_vector.append(self.totalDose);
     self.doseRate_vector.append(profile.doseRate);
     self.duration_vector.append(profile.duration);
@@ -480,14 +480,12 @@ def getProfile(filename, sensor):
     myfile = open(filename, "r")
 
     print( "Reading temperature/radiation file: ", filename)
-    
     for index, line in enumerate( myfile):
       #Ignoring the first line of the file, which just has some extra info
       if index == 0: 
         continue
       words = line.split()
       fill = int(words[0])
-      print(f"Index: {index}, Fill: {fill}")
       timestamp = int(words[1])
       timestep = int(words[2])
       temperature = float(words[3])
@@ -513,32 +511,6 @@ def getProfile(filename, sensor):
     myfile.close();
 
     return profile;
-#..................................................................................... New implementation........................    
- #   missing_fill_start = 6432
-  #  missing_fill_end = 6569
-
-# Find where to insert the dummy fills
-   # insert_index = 0
-    #for i, p in enumerate(profile):
-     #   if p.fill >= missing_fill_start:
-      #      insert_index = i
-       #     break
-   # dummy_profiles = []
- #   for fill_num in range(missing_fill_start, missing_fill_end + 1):
-  #      dummy = DataElement()
-   #     dummy.fill = fill_num
-    #    dummy.timestamp = None  # No timestamp since it's dummy
-     #   dummy.duration = 0      # Zero duration for missing fills
-      #  dummy.doseRate = 0.0
-#        if insert_index > 0:
- #           dummy.temperature = profile[insert_index - 1].temperature
-  #      else:
-   #         dummy.temperature = 20.0
-    #        dummy.leakageCurrentData = 0.0
-     #       dummy_profiles.append(dummy)
-  #  profile = profile[:insert_index] + dummy_profiles + profile[insert_index:]
-#....................................................................................................................................................    
-    
 def getBeginTime(profile):
     timestamp = profile[0].timestamp;
     beginTime = datetime.datetime.fromtimestamp(timestamp);
@@ -550,11 +522,12 @@ def convertDatetime(dateVector, beginTime):
   reformattedVec = []
 
   for k in range(len(dateVector)):
-     # Convert to seconds based on the date
-      daysInSeconds = 86400
-      d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*daysInSeconds)
-      da = ROOT.TDatime(d2.date().year, d2.date().month, d2.date().day, d2.time().hour, d2.time().minute, d2.time().second);
-      reformattedVec.append(da.Convert());
+    # Convert to seconds based on the date
+    daysInSeconds = 86400
+    d2 = beginTime + datetime.timedelta(seconds=dateVector[k]*daysInSeconds)
+    da = ROOT.TDatime(d2.date().year, d2.date().month, d2.date().day, d2.time().hour, d2.time().minute, d2.time().second);
+    reformattedVec.append(da.Convert());
+
   return reformattedVec
 
 
@@ -574,25 +547,21 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
       t_vdepvector.append(i)
     gr = ROOT.TGraph(len(vecx),t_timevector, t_vdepvector);
 
-
     #in case of plot as a function of time, convert the days from simulation into a more handy date
     if(mode=="date") :
         gr.GetXaxis().SetTimeDisplay(1);
         gr.GetXaxis().SetNdivisions(6, 2, 0);
         gr.GetXaxis().SetTimeFormat("%d/%m/%Y");
         gr.GetXaxis().SetTimeOffset(0, "gmt");
-        start_time = min(t_timevector)
-        end_time   = max(t_timevector)
-        gr.GetXaxis().SetRangeUser(start_time, end_time)
-        print("X-axis range:", start_time, end_time)
     gr.GetXaxis().SetTitle(xName);
     gr.GetYaxis().SetTitle(yName);
 
     gr.SetName(plotname);
     gr.Write();
+
     print("Writing ", plotname, " to file ", rootOutputFileName)
     file.Close();
-    
+
 
 # Read constants values from a config file 
 annealingConstants = AnnealingConstants(opt.inputAnnealingConstants);
@@ -629,8 +598,6 @@ plot_vectors(time_vector, sensor.fluence_vector, "Fluence [n_{eq}/cm^{2}]", "Dat
 
 plot_vectors(time_vector_data, sensor.flux_vector, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux", "date", opt.output_root_file)
 plot_vectors(time_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data", "date", opt.output_root_file)
-plot_vectors(sensor.fill_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data", "fill", opt.output_root_file)
-plot_vectors(sensor.fill_vector_data, sensor.temperature_vector, "Temperature [K]", "Fill", "Temperature_vs_fill_data", "fill", opt.output_root_file)
 
 plot_vectors(time_vector, sensor.N_benef_anneal_g1_vec, "N_{dep, benef_anneal_g1} [V]", "Date [days]", "N_benef_anneal_g1", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.N_revers_anneal_g1_vec, "N_{dep, revers_anneal_g1} [V]", "Date [days]", "N_revers_anneal_g1", "date", opt.output_root_file)
@@ -654,7 +621,6 @@ plot_vectors(sensor.fluence_vector, sensor.temperature_vector, "Temperature [K]"
 plot_vectors(sensor.fluence_vector_data, sensor.leakageCurrentData, "I_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "I_leak_per_module_data_vs_fluence", "fluence", opt.output_root_file)
 
 plot_vectors(sensor.fill_vector, sensor.leakage_current, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Fill", "I_leak_vs_fill", "fill", opt.output_root_file)
-
 
 print(opt.output_root_file, " has been created")
 
