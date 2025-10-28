@@ -239,6 +239,14 @@ class Sensor:
         self.fill_vector_data = [];
         self.leakageCurrentData = [];
 
+        self.tmpTime_vector_timeStart_data_avgFill = [];
+        self.tmpTime_vector_timeEnd_data_avgFill = [];
+        self.tmpTime_vector_data_avgFill = [];
+        self.fluence_vector_data_avgFill = [];
+        self.fill_vector_data_avgFill = [];
+        self.leakageCurrentData_avgFill = [];
+        self.flux_vector_avgFill = [];
+
 
         self.Ndonor_stable_donorremoval= opt.donorremovalfraction*abs(self.Nacceptor-self.Ndonor);
         self.Ndonor_const=self.Ndonor-self.Ndonor_stable_donorremoval;
@@ -334,6 +342,33 @@ class Sensor:
         self.fluence_vector_data.append(self.totalDose);
         self.leakageCurrentData.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap));
         self.flux_vector.append(profile.doseRate);
+
+    # Only fill these ones if there is any data, not just for every time step
+    if (profile.leakageCurrentData > 0. and profile.doseRate > 0.):
+      if(len(self.fill_vector_data_avgFill)==0 or self.fill_vector_data[-1] != profile.fill):
+        if(len(self.fill_vector_data_avgFill)!=0):
+          timeDelta = (self.tmpTime_vector_timeEnd_data_avgFill[-1] - self.tmpTime_vector_timeStart_data_avgFill[-1])
+          if(timeDelta):
+            self.tmpTime_vector_data_avgFill[-1] = self.tmpTime_vector_data_avgFill[-1] / timeDelta
+            self.fluence_vector_data_avgFill[-1] = self.fluence_vector_data_avgFill[-1] / timeDelta
+            self.leakageCurrentData_avgFill[-1] = self.leakageCurrentData_avgFill[-1] / timeDelta
+            self.flux_vector_avgFill[-1] = self.flux_vector_avgFill[-1] / timeDelta
+
+        self.tmpTime_vector_timeStart_data_avgFill.append(self.time);
+        self.tmpTime_vector_timeEnd_data_avgFill.append(self.time);
+        self.fill_vector_data_avgFill.append(profile.fill);
+        self.tmpTime_vector_data_avgFill.append(self.time);
+        self.fluence_vector_data_avgFill.append(self.totalDose);
+        self.leakageCurrentData_avgFill.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap));
+        self.flux_vector_avgFill.append(profile.doseRate);
+
+
+      else:
+        self.tmpTime_vector_timeEnd_data_avgFill[-1] = self.time;
+        self.tmpTime_vector_data_avgFill[-1] += self.time;
+        self.fluence_vector_data_avgFill[-1] += self.totalDose;
+        self.leakageCurrentData_avgFill[-1] += leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap);
+        self.flux_vector_avgFill[-1] += profile.doseRate;
 
     
     ##################################################################
