@@ -7,13 +7,13 @@ from array import array
 
 parser = OptionParser()
 #These are the main options that should be changed
-parser.add_option("--input_profile", default="../../oldPixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1_newL1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="/afs/cern.ch/user/s/singhsh/PixelMonitoring/data/radiation_simulation/profiles/per_year/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_2022.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 parser.add_option("--inputAnnealingConstants", default="config/annealing_constants.py", help="Input annealing constants file name")
 parser.add_option("--output_root_file", default="testFile.root", help="Output ROOT file name")
 # These are options that shoudlb e changed if you are using different sensors etc.
 parser.add_option("--timestep", default=1, help="step size is 1 second, do not change this!")
 parser.add_option("--donorremovalfraction", default=0.99, help="fraction of donors which can be removed by donor removal")
-parser.add_option("--userTrefC", default=0., help="")
+parser.add_option("--userTrefC", type="float",  default=0., help="reference temprature in celsius")
 parser.add_option("--bandGap", default=1.21, help="eV used for scaling temperatures")
 # Dimensions of sensors for CMS are taken from page 68 of https://cds.cern.ch/record/2773267
 parser.add_option("--sensorThickness", default=0.0285, help="Thickness of the sensor in cm. This is correct for CMS")
@@ -515,7 +515,6 @@ def getProfile(filename, sensor):
     myfile = open(filename, "r")
 
     print( "Reading temperature/radiation file: ", filename)
-
     for index, line in enumerate( myfile):
       #Ignoring the first line of the file, which just has some extra info
       if index == 0: 
@@ -537,7 +536,7 @@ def getProfile(filename, sensor):
         print(line)
         profileSnapshot.duration = 0.001
       profileSnapshot.doseRate = doseRate * sensor.DoseRateScaling;
-      profileSnapshot.temperature = temperature;
+      profileSnapshot.temperature = temperature;   #Add 3 degree?????????????????
       # Scaling to milliamps from microamps
       #profileSnapshot.leakageCurrentData = leakageCurrentScale(leakageCurrent/1.e3, userTrefK, profileSnapshot.temperature, opt.bandGap);
       profileSnapshot.leakageCurrentData = leakageCurrent/1.e3
@@ -547,7 +546,6 @@ def getProfile(filename, sensor):
     myfile.close();
 
     return profile;
-
 def getBeginTime(profile):
     timestamp = profile[0].timestamp;
     beginTime = datetime.datetime.fromtimestamp(timestamp);
@@ -590,7 +588,6 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
         gr.GetXaxis().SetNdivisions(6, 2, 0);
         gr.GetXaxis().SetTimeFormat("%d/%m/%Y");
         gr.GetXaxis().SetTimeOffset(0, "gmt");
-
     gr.GetXaxis().SetTitle(xName);
     gr.GetYaxis().SetTitle(yName);
 
@@ -619,7 +616,6 @@ print("Processing finished, writing data...")
 beginTime = getBeginTime(profile);
 time_vector = convertDatetime(sensor.tmpTimeVector, beginTime)
 time_vector_data = convertDatetime(sensor.tmpTime_vector_data, beginTime)
-
 
 # plots as function of time
 plot_vectors(time_vector, sensor.Neff_vector, "N_{eff} [1/cm^{3}]", "Date [days]", "Neff", "date", opt.output_root_file)

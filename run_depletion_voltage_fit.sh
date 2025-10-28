@@ -8,7 +8,7 @@ period_type=per_phase  # per_year or per_phase
 period=phase1
 
 output_simulation_directory=data/simulation
-output_simulation_file_name=${output_simulation_directory}/simulation_${sector}_${period}.root
+output_simulation_file_name=${output_simulation_directory}/simulation_${sector}_${period}_newL1.root
 
 output_depletion_voltage_directory=data/depletion_voltage_fit
 output_depletion_voltage_file_name=${sector}_${period}
