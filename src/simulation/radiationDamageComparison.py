@@ -7,7 +7,8 @@ from array import array
 
 parser = OptionParser()
 #These are the main options that should be changed
-parser.add_option("--input_profile", default="../../oldPixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR1/profile_BPix_BmI_SEC1_LYR1_phase1_newL1.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+#parser.add_option("--input_profile", default="../../oldPixelMonitoring/data/radiation_simulation/profiles/per_phase/BPix_BmI_SEC1_LYR2/profile_BPix_BmI_SEC1_LYR2_phase1_toy.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
+parser.add_option("--input_profile", default="../../oldPixelMonitoring/data/radiation_simulation/profiles/per_year/BPix_BmI_SEC1_LYR2/profile_BPix_BmI_SEC1_LYR2_2017.txt", help="Input profile file name, should have been made using PixelMonitoring repository")
 
 parser.add_option("--output_root_file", default="testFile.root", help="Output ROOT file name")
 # These are options that shoudlb e changed if you are using different sensors etc.
@@ -37,6 +38,7 @@ file.Close()
 #function to read in the temp/rad profile
 def leakageCurrentScale(leakageCurrent, T, Tref, bandGap, boltzmanConstant):
     # Taken from equation 25 of https://cds.cern.ch/record/2773267
+    #return leakageCurrent
     return leakageCurrent*(T*T/(Tref*Tref)*math.exp(-(bandGap/(2*boltzmanConstant))*(1/T - 1/Tref)));
 
 # An array of DataElements that contain the conditions at each time step
@@ -138,6 +140,8 @@ class Sensor:
 
  
         self.G_i = [];
+        self.leakage_current_hamburg_scale_to_data = []
+        self.leakage_current_sheffield_scale_to_data = []
         self.leakage_current_hamburg = [];
         self.leakage_current_sheffield = [];
         self.leakage_current_per_module = [];
@@ -166,6 +170,9 @@ class Sensor:
 
         self.temperature_vector = [];
         self.temperature_vector_avgFill = [];
+        self.temperature_vector_median = [];
+        self.temperature_vector_medianVec = [];
+        self.temperature_vector_first = [];
 
         self.tmpTime_vector_data = [];
         self.fluence_vector_data = [];
@@ -178,10 +185,43 @@ class Sensor:
         self.fluence_vector_data_avgFill = [];
         self.fill_vector_data_avgFill = [];
         self.leakageCurrentData_avgFill = [];
+        self.leakageCurrentDataNoRescale_avgFill = [];
         self.flux_vector_avgFill = [];
 
 
+        self.tmpTime_vector_timeStart_data_median = [];
+        self.tmpTime_vector_timeEnd_data_median = [];
+        self.tmpTime_vector_data_median = [];
+        self.fluence_vector_data_median = [];
+        self.fill_vector_data_median = [];
+        self.leakageCurrentData_median = [];
+        self.leakageCurrentDataNoRescale_median = [];
+        self.flux_vector_median = [];
 
+
+        self.tmpTime_vector_timeStart_data_first = [];
+        self.tmpTime_vector_timeEnd_data_first = [];
+        self.tmpTime_vector_data_first = [];
+        self.fluence_vector_data_first = [];
+        self.fill_vector_data_first = [];
+        self.leakageCurrentData_first = [];
+        self.leakageCurrentDataNoRescale_first = [];
+        self.flux_vector_first = [];
+
+        self.tmpTime_vector_timeStart_data_medianVec = [];
+        self.tmpTime_vector_timeEnd_data_medianVec = [];
+        self.tmpTime_vector_data_medianVec = [];
+        self.fluence_vector_data_medianVec = [];
+        self.fill_vector_data_medianVec = [];
+        self.leakageCurrentData_medianVec = [];
+        self.leakageCurrentDataNoRescale_medianVec = [];
+        self.flux_vector_medianVec = [];
+
+
+  def median(self, vector):
+    vector.sort()
+    n = len(vector)
+    return vector[math.floor(n/2)]
 
 
   # TODO: maybe this should be at the current temperature, since we will need to scale the data, not just the predictions????
@@ -236,31 +276,77 @@ class Sensor:
           #timeDelta = (self.tmpTime_vector_timeEnd_data_avgFill[-1] - self.tmpTime_vector_timeStart_data_avgFill[-1])
           timeDelta = (self.tmpTime_vector_timeEnd_data_avgFill[-1])
           if(timeDelta):
-            #print(timeDelta, self.tmpTime_vector_data_avgFill[-1] / timeDelta, self.time, self.fluence_vector_data_avgFill[-1] / timeDelta, self.totalDose)
             self.tmpTime_vector_data_avgFill[-1] = self.tmpTime_vector_data_avgFill[-1] / timeDelta
-            self.fluence_vector_data_avgFill[-1] = self.fluence_vector_data_avgFill[-1] / timeDelta
+            self.fluence_vector_data_avgFill[-1] = self.fluence_vector_data_avgFill[-1] 
             self.leakageCurrentData_avgFill[-1] = self.leakageCurrentData_avgFill[-1] / timeDelta
             self.flux_vector_avgFill[-1] = self.flux_vector_avgFill[-1] / timeDelta
+            self.temperature_vector_avgFill[-1] = self.temperature_vector_avgFill[-1]/ timeDelta
 
-        #self.tmpTime_vector_timeStart_data_avgFill.append(0);
+            self.fill_vector_data_median.append(profile.fill);
+            self.tmpTime_vector_data_median.append(self.median(self.tmpTime_vector_data_medianVec));
+            self.fluence_vector_data_median.append(self.fluence_vector_data_avgFill[-1]);
+            self.leakageCurrentData_median.append(self.median(self.leakageCurrentData_medianVec));
+            self.leakageCurrentDataNoRescale_median.append(self.median(self.leakageCurrentDataNoRescale_medianVec));
+            self.flux_vector_median.append(self.median(self.flux_vector_medianVec));
+            self.temperature_vector_median.append(self.median(self.temperature_vector_medianVec));
+
         self.tmpTime_vector_timeEnd_data_avgFill.append(tDelta);
         self.fill_vector_data_avgFill.append(profile.fill);
         self.tmpTime_vector_data_avgFill.append(self.time*tDelta);
-        self.fluence_vector_data_avgFill.append(self.totalDose*tDelta);
+        self.fluence_vector_data_avgFill.append(self.totalDose);
         self.leakageCurrentData_avgFill.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap, self.boltzmanConstant)*tDelta);
+        self.leakageCurrentDataNoRescale_avgFill.append(profile.leakageCurrentData);
         self.flux_vector_avgFill.append(profile.doseRate*tDelta);
         self.temperature_vector_avgFill.append(profile.temperature*tDelta);
 
+
+
+        self.tmpTime_vector_timeEnd_data_first.append(tDelta);
+        self.fill_vector_data_first.append(profile.fill);
+        self.tmpTime_vector_data_first.append(self.time);
+        self.fluence_vector_data_first.append(self.totalDose);
+        self.leakageCurrentData_first.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap, self.boltzmanConstant));
+        self.leakageCurrentDataNoRescale_first.append(profile.leakageCurrentData);
+        self.flux_vector_first.append(profile.doseRate);
+        self.temperature_vector_first.append(profile.temperature);
+
+        self.tmpTime_vector_timeEnd_data_medianVec.clear();
+        self.fill_vector_data_medianVec.clear();
+        self.tmpTime_vector_data_medianVec.clear()
+        self.fluence_vector_data_medianVec.clear()
+        self.leakageCurrentData_medianVec.clear()
+        self.leakageCurrentDataNoRescale_medianVec.clear()
+        self.flux_vector_medianVec.clear()
+        self.temperature_vector_medianVec.clear()
+
+        self.tmpTime_vector_timeEnd_data_medianVec.append(tDelta);
+        self.fill_vector_data_medianVec.append(profile.fill);
+        self.tmpTime_vector_data_medianVec.append(self.time);
+        self.fluence_vector_data_medianVec.append(self.totalDose);
+        self.leakageCurrentData_medianVec.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap, self.boltzmanConstant));
+        self.leakageCurrentDataNoRescale_medianVec.append(profile.leakageCurrentData);
+        self.flux_vector_medianVec.append(profile.doseRate);
+        self.temperature_vector_medianVec.append(profile.temperature);
 
       else:
 
         self.tmpTime_vector_timeEnd_data_avgFill[-1] += tDelta;
         self.tmpTime_vector_data_avgFill[-1] += self.time*tDelta;
-        self.fluence_vector_data_avgFill[-1] += self.totalDose*tDelta;
+        self.fluence_vector_data_avgFill[-1] += self.totalDose;
         self.leakageCurrentData_avgFill[-1] += leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap, self.boltzmanConstant)*tDelta;
+        self.leakageCurrentDataNoRescale_avgFill[-1] += profile.leakageCurrentData*tDelta;
         self.flux_vector_avgFill[-1] += profile.doseRate*tDelta;
         self.temperature_vector_avgFill[-1] += profile.temperature*tDelta;
 
+
+        self.tmpTime_vector_timeEnd_data_medianVec.append(tDelta);
+        self.fill_vector_data_medianVec.append(profile.fill);
+        self.tmpTime_vector_data_medianVec.append(self.time);
+        self.fluence_vector_data_medianVec.append(self.totalDose);
+        self.leakageCurrentData_medianVec.append(leakageCurrentScale(profile.leakageCurrentData, userTrefK, profile.temperature, opt.bandGap, self.boltzmanConstant));
+        self.leakageCurrentDataNoRescale_medianVec.append(profile.leakageCurrentData);
+        self.flux_vector_medianVec.append(profile.doseRate);
+        self.temperature_vector_medianVec.append(profile.temperature);
 
     # Equations taken from page 5 of https://cds.cern.ch/record/2773267
     tauInverse = self.leakageCurrentConstants.k01 * math.exp(-self.leakageCurrentConstants.E1 / (self.boltzmanConstant * int(profile.temperature)))
@@ -371,6 +457,15 @@ class Sensor:
 
     # TODO: may need to fix these functions, not sure
     # Convert to per volume or per module units
+    #self.leakage_current_hamburg_scale_to_data.append(leakageCurrentScale(self.leakage_current_hamburg[-1], profile.temperature, self.Tref_leakage, opt.bandGap, self.boltzmanConstant));
+    if(profile.fill>0):
+      self.leakage_current_hamburg_scale_to_data.append(leakageCurrentScale(self.leakage_current_hamburg[-1], profile.temperature, self.userTrefK, opt.bandGap, self.boltzmanConstant));
+      self.leakage_current_sheffield_scale_to_data.append(leakageCurrentScale(self.leakage_current_sheffield[-1], profile.temperature, self.Tref_leakage, opt.bandGap, self.boltzmanConstant));
+    else:
+      self.leakage_current_hamburg_scale_to_data.append(0);
+      self.leakage_current_sheffield_scale_to_data.append(0);
+    #print(self.leakage_current_hamburg[-1], self.leakage_current_hamburg_scale_to_data[-1], profile.temperature,  self.Tref_leakage, self.userTrefK)
+
     self.leakage_current_per_volume.append(self.getPerVolume(self.leakage_current_hamburg[-1], self.userTrefK, self.Tref_leakage))
     self.leakage_current_per_module.append(self.getPerModule(self.leakage_current_hamburg[-1], self.userTrefK, self.Tref_leakage))
     self.leakage_current_per_volume_sheffield.append(self.getPerVolume(self.leakage_current_sheffield[-1], self.userTrefK, self.Tref_sheff))
@@ -383,10 +478,6 @@ class Sensor:
             self.fluence_vector_data_avgFill[-1] = self.fluence_vector_data_avgFill[-1] / timeDelta
             self.leakageCurrentData_avgFill[-1] = self.leakageCurrentData_avgFill[-1] / timeDelta
             self.flux_vector_avgFill[-1] = self.flux_vector_avgFill[-1] / timeDelta
-
-
-
-
 
 
 
@@ -472,7 +563,6 @@ def plot_vectors(vecx, vecy, yName, xName, plotname, mode, rootOutputFileName):
         start_time = min(t_timevector)
         end_time   = max(t_timevector)
         gr.GetXaxis().SetRangeUser(start_time, end_time)
-        #print("X-axis range:", start_time, end_time)
     gr.GetXaxis().SetTitle(xName);
     gr.GetYaxis().SetTitle(yName);
 
@@ -501,13 +591,19 @@ beginTime = getBeginTime(profile);
 time_vector = convertDatetime(sensor.tmpTimeVector, beginTime)
 time_vector_data = convertDatetime(sensor.tmpTime_vector_data, beginTime)
 time_vector_data_fill_average = convertDatetime(sensor.tmpTime_vector_data_avgFill, beginTime)
+time_vector_data_fill_median = convertDatetime(sensor.tmpTime_vector_data_median, beginTime)
+time_vector_data_fill_first = convertDatetime(sensor.tmpTime_vector_data_first, beginTime)
 
+
+#print(sensor.leakageCurrentData_first)
 # plots as function of time
 plot_vectors(time_vector, sensor.alpha_vec, "#alpha [A/cm]", "Date [days]", "alpha", "date", opt.output_root_file)
+plot_vectors(time_vector, sensor.leakage_current_hamburg_scale_to_data, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Date [days]", "I_leak_hamburg_scale_to_data", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_hamburg, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Date [days]", "I_leak_hamburg", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_module, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_hamburg", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_volume, "I_{leak} (@%d C) [mA/cm^{3}]", "Date [days]", "I_leak_volume_hamburg", "date", opt.output_root_file)
 
+plot_vectors(time_vector, sensor.leakage_current_sheffield_scale_to_data, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Date [days]", "I_leak_sheffield_scale_to_data", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_sheffield, "I_{leak} (@%d C) [mA/cm^{2}]"%(opt.userTrefC), "Date [days]", "I_leak_sheffield", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_module_sheffield, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_sheffield", "date", opt.output_root_file)
 plot_vectors(time_vector, sensor.leakage_current_per_volume_sheffield, "I_{leak} (@%d C) [mA/cm^{3}]", "Date [days]", "I_leak_volume_sheffield", "date", opt.output_root_file)
@@ -522,14 +618,32 @@ plot_vectors(sensor.fill_vector_data, sensor.temperature_vector, "Temperature [K
 
 plot_vectors(time_vector_data_fill_average, sensor.flux_vector_avgFill, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux_fill_average", "date", opt.output_root_file)
 plot_vectors(time_vector_data_fill_average, sensor.leakageCurrentData_avgFill, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data_fill_average", "date", opt.output_root_file)
+plot_vectors(time_vector_data_fill_average, sensor.leakageCurrentDataNoRescale_avgFill, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data_fill_avgFill_no_rescale", "date", opt.output_root_file)
 plot_vectors(sensor.fill_vector_data_avgFill, sensor.leakageCurrentData_avgFill, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data_fill_average", "fill", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data_avgFill, sensor.leakageCurrentDataNoRescale_avgFill, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data_fill_average_no_rescale", "fill", opt.output_root_file)
 plot_vectors(sensor.fill_vector_data_avgFill, sensor.temperature_vector_avgFill, "Temperature [K]", "Fill", "Temperature_vs_fill_data_fill_average", "fill", opt.output_root_file)
+
+plot_vectors(time_vector_data_fill_median, sensor.flux_vector_median, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux_fill_median", "date", opt.output_root_file)
+plot_vectors(time_vector_data_fill_median, sensor.leakageCurrentData_median, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data_fill_median", "date", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data_median, sensor.leakageCurrentData_median, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data_fill_median", "fill", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data_median, sensor.leakageCurrentDataNoRescale_median, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data_fill_median_no_rescale", "fill", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data_median, sensor.temperature_vector_median, "Temperature [K]", "Fill", "Temperature_vs_fill_data_fill_median", "fill", opt.output_root_file)
+plot_vectors(time_vector_data_fill_median, sensor.leakageCurrentDataNoRescale_median, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data_fill_median_no_rescale", "date", opt.output_root_file)
+
+plot_vectors(time_vector_data_fill_first, sensor.flux_vector_first, "Flux [n_{eq}/cm^{2}/s]", "Date [days]", "flux_fill_first", "date", opt.output_root_file)
+plot_vectors(time_vector_data_fill_first, sensor.leakageCurrentData_first, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data_fill_first", "date", opt.output_root_file)
+plot_vectors(time_vector_data_fill_first, sensor.leakageCurrentDataNoRescale_first, "I_{leak} (@%d C) [mA],  1 ROG"%(opt.userTrefC), "Date [days]", "I_leak_per_module_data_fill_first_no_rescale", "date", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data_first, sensor.leakageCurrentData_first, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data_fill_first", "fill", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data_first, sensor.leakageCurrentDataNoRescale_first, "I_{leak} (@%d C) [mA], 1 ROG"%(opt.userTrefC), "Fill", "I_leak_vs_fill_data_fill_first_no_rescale", "fill", opt.output_root_file)
+plot_vectors(sensor.fill_vector_data_first, sensor.temperature_vector_first, "Temperature [K]", "Fill", "Temperature_vs_fill_data_fill_first", "fill", opt.output_root_file)
 
 #plots as function of dose
 plot_vectors(sensor.fluence_vector, sensor.alpha_vec, "#alpha [A/cm]", "Fluence [n_{eq}/cm^{2}]", "alpha_vs_fluence", "fluence", opt.output_root_file)
+plot_vectors(sensor.fluence_vector, sensor.leakage_current_hamburg_scale_to_data, "I_{leak} [mA/cm^{2}]", "Fluence [n_{eq}/cm^{2}]", "I_leak_vs_fluence_hamburg_scale_to_data", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_hamburg, "I_{leak} [mA/cm^{2}]", "Fluence [n_{eq}/cm^{2}]", "I_leak_vs_fluence_hamburg", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_per_module, "I_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Date [days]", "I_leak_per_module_vs_fluence_hamburg", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_per_volume, "I_{leak} (@%d C) [mA/cm^{3}]"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "I_leak_volume_vs_fluence_hamburg", "fluence", opt.output_root_file)
+plot_vectors(sensor.fluence_vector, sensor.leakage_current_sheffield_scale_to_data, "I_{leak} [mA/cm^{2}]", "Fluence [n_{eq}/cm^{2}]", "I_leak_vs_fluence_sheffield_scale_to_data", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_sheffield, "I_{leak} [mA/cm^{2}]", "Fluence [n_{eq}/cm^{2}]", "I_leak_vs_fluence_sheffield", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_per_module_sheffield, "I_{leak} (@%d C) [mA] per module"%(opt.userTrefC), "Date [days]", "I_leak_per_module_vs_fluence_sheffield", "fluence", opt.output_root_file)
 plot_vectors(sensor.fluence_vector, sensor.leakage_current_per_volume_sheffield, "I_{leak} (@%d C) [mA/cm^{3}]"%(opt.userTrefC), "Fluence [n_{eq}/cm^{2}]", "I_leak_volume_vs_fluence_sheffield", "fluence", opt.output_root_file)
